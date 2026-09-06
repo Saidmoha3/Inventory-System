@@ -1,0 +1,6 @@
+{
+  "name": "Supermarket Pro",
+  "description": "Professional supermarket management system with real-time stock tracking, sales analytics, and multi-location support.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

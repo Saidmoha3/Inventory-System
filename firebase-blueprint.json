@@ -1,0 +1,64 @@
+{
+  "collections": {
+    "users": {
+      "description": "User profiles and roles",
+      "fields": {
+        "email": "string",
+        "name": "string",
+        "role": "string",
+        "locationIds": "array",
+        "createdAt": "timestamp"
+      }
+    },
+    "products": {
+      "description": "Product catalog",
+      "fields": {
+        "name": "string",
+        "sku": "string",
+        "category": "string",
+        "unit": "string",
+        "minStockLevel": "number",
+        "price": "number",
+        "imageUrl": "string",
+        "createdAt": "timestamp"
+      }
+    },
+    "locations": {
+      "description": "Inventory locations (warehouses/stores)",
+      "fields": {
+        "name": "string",
+        "address": "string",
+        "createdAt": "timestamp"
+      }
+    },
+    "inventory": {
+      "description": "Stock levels per product and location",
+      "fields": {
+        "productId": "string",
+        "locationId": "string",
+        "quantity": "number",
+        "lastUpdated": "timestamp"
+      }
+    },
+    "sales": {
+      "description": "Sales records for analytics",
+      "fields": {
+        "productId": "string",
+        "locationId": "string",
+        "quantity": "number",
+        "totalPrice": "number",
+        "timestamp": "timestamp"
+      }
+    },
+    "notifications": {
+      "description": "System alerts and notifications",
+      "fields": {
+        "userId": "string",
+        "message": "string",
+        "type": "string",
+        "read": "boolean",
+        "timestamp": "timestamp"
+      }
+    }
+  }
+}
