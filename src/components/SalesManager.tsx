@@ -98,21 +98,22 @@ export default function SalesManager({ products, locations, sales, inventory, on
         throw new Error(`Insufficient stock. Only ${stock} units available at this location.`);
       }
 
-      const totalPrice = (product as any).price * quantity;
+      const totalPrice = ((product as any).price || 0) * (quantity || 0);
+      const safeTotalPrice = isNaN(totalPrice) ? 0 : totalPrice;
 
       if (editingSale) {
         await updateSale(editingSale, {
           productId: productId,
           locationId: locationId,
           quantity,
-          totalPrice,
+          totalPrice: safeTotalPrice,
         });
       } else {
         const saleData = {
           productId: productId,
           locationId: locationId,
           quantity,
-          totalPrice,
+          totalPrice: safeTotalPrice,
         };
         const saleRef = await recordSale(saleData);
         setLastSale({ ...saleData, id: saleRef.id, timestamp: new Date() });

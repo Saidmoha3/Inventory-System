@@ -18,7 +18,7 @@ export default function UserManager({ users, onAdd, onUpdate, onDelete }: UserMa
     email: '',
     password: '',
     address: '',
-    role: 'staff' as UserRole
+    role: 'Staff' as UserRole
   });
 
   const filteredUsers = users.filter(u => 
@@ -33,7 +33,7 @@ export default function UserManager({ users, onAdd, onUpdate, onDelete }: UserMa
       email: user.email || '',
       password: user.password || '',
       address: user.address || '',
-      role: user.role || 'staff'
+      role: user.role || 'Staff'
     });
   };
 
@@ -44,7 +44,7 @@ export default function UserManager({ users, onAdd, onUpdate, onDelete }: UserMa
       email: '',
       password: '',
       address: '',
-      role: 'staff'
+      role: 'Staff'
     });
   };
 
@@ -139,8 +139,9 @@ export default function UserManager({ users, onAdd, onUpdate, onDelete }: UserMa
                   value={formData.role}
                   onChange={(e) => setFormData({...formData, role: e.target.value as UserRole})}
                 >
-                  <option value="staff">Staff</option>
-                  <option value="admin">Admin</option>
+                  <option value="Staff">Staff</option>
+                  <option value="Manager">Manager</option>
+                  <option value="Admin">Admin</option>
                 </select>
               </div>
               <button

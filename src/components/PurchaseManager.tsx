@@ -93,13 +93,16 @@ export default function PurchaseManager({ products, locations, purchases, suppli
         productId = prodRef.id;
       }
 
+      const totalCost = (costPrice || 0) * (quantity || 0);
+      const safeTotalCost = isNaN(totalCost) ? 0 : totalCost;
+
       const purchaseData = {
         productId: productId,
         locationId: selectedLocation,
         supplierId: supplierId,
         quantity,
         costPrice,
-        totalCost: costPrice * quantity,
+        totalCost: safeTotalCost,
       };
 
       if (editingPurchase) {

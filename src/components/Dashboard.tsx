@@ -27,7 +27,8 @@ import {
   ArrowDownRight,
   ChevronDown,
   Calendar,
-  Zap
+  Zap,
+  LayoutGrid
 } from 'lucide-react';
 import { Product, Sale, InventoryItem, Location, StockMovement } from '../types';
 import ForecastChart from './ForecastChart';
@@ -48,76 +49,105 @@ interface DashboardProps {
 export default function Dashboard({ products, locations, sales, inventory, onRecordSale, onUpdateStock }: DashboardProps) {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   // 1. Calculate Real Metrics
-  const totalRevenue = sales.reduce((acc, curr) => acc + curr.totalPrice, 0);
+  const totalRevenue = sales.reduce((acc, curr) => acc + (curr.totalPrice || 0), 0);
   
   // Calculate Expenses based on actual costPrice of products sold
   const totalExpenses = sales.reduce((acc, sale) => {
     const product = products.find(p => p.id === sale.productId);
-    const cost = product?.costPrice || (product?.price ? product.price * 0.7 : 0); // Fallback to 70% if no costPrice
-    return acc + (cost * sale.quantity);
+    const cost = product?.costPrice || (product?.price ? (product.price * 0.7) : 0); // Fallback to 70% if no costPrice
+    return acc + (cost * (sale.quantity || 0));
   }, 0);
 
   const netProfit = totalRevenue - totalExpenses;
   const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+  const safeProfitMargin = isNaN(profitMargin) ? 0 : profitMargin;
+
+  const lowStockCount = products.filter(product => {
+    const currentStock = inventory
+      .filter(i => i.productId === product.id)
+      .reduce((acc, curr) => acc + curr.quantity, 0);
+    return product.minStockLevel > 0 && currentStock <= product.minStockLevel;
+  }).length;
+
+  const totalItemsSold = sales.reduce((acc, curr) => acc + (curr.quantity || 0), 0);
 
   const stats = [
     { 
       label: 'Total Revenue', 
-      value: `$${totalRevenue.toLocaleString()}`, 
-      change: sales.length > 0 ? '+100%' : '0%', 
-      isPositive: true,
-      color: 'text-blue-600'
+      value: `$${(totalRevenue || 0).toLocaleString()}`, 
+      sublabel: 'Income today',
+      color: '#00c0ef',
+      icon: DollarSign
     },
     { 
-      label: 'Total Expenses', 
-      value: `$${totalExpenses.toLocaleString()}`, 
-      change: '+0%', 
-      isPositive: false,
-      color: 'text-red-500'
-    },
-    { 
-      label: 'Net Profit', 
-      value: `$${netProfit.toLocaleString()}`, 
-      change: '+0%', 
-      isPositive: true,
-      color: 'text-emerald-500'
+      label: 'Items Sold', 
+      value: totalItemsSold.toLocaleString(), 
+      sublabel: 'Total volume',
+      color: '#00a65a',
+      icon: Package
     },
     { 
       label: 'Profit Margin', 
-      value: `${profitMargin.toFixed(1)}%`, 
-      change: '+0%', 
-      isPositive: true,
-      color: 'text-slate-900'
+      value: `${(safeProfitMargin || 0).toFixed(1)}%`, 
+      sublabel: 'Of traffic is profit',
+      color: '#f39c12',
+      icon: TrendingUp
+    },
+    { 
+      label: 'Critical Stock', 
+      value: lowStockCount.toLocaleString(), 
+      sublabel: 'Items need attention',
+      color: '#dd4b39',
+      icon: AlertTriangle
     },
   ];
 
   // 2. Real Trend Data from Sales
-  const last6Months = Array.from({ length: 7 }, (_, i) => {
+  const last24Hours = Array.from({ length: 24 }, (_, i) => {
     const d = new Date();
-    d.setMonth(d.getMonth() - (6 - i));
+    d.setHours(d.getHours() - (23 - i), 0, 0, 0);
+    return d;
+  });
+
+  const hourlyTrendData = last24Hours.map(date => {
+    const hourSales = sales.filter(s => {
+      const sDate = safeDate(s.timestamp);
+      return sDate.getHours() === date.getHours() && sDate.getDate() === date.getDate();
+    });
+    const revenue = hourSales.reduce((acc, curr) => acc + curr.totalPrice, 0);
+    return {
+      time: date.getHours() + ':00',
+      revenue: revenue,
+      sales: hourSales.length
+    };
+  });
+
+  // 3. Monthly Trend (Last 6 Months)
+  const last6Months = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - (5 - i));
     return d.toLocaleString('default', { month: 'short' });
   });
 
-  const trendData = last6Months.map(month => {
+  const monthlyTrendData = last6Months.map(month => {
     const monthSales = sales.filter(s => {
       const date = safeDate(s.timestamp);
       return date.toLocaleString('default', { month: 'short' }) === month;
     });
     const revenue = monthSales.reduce((acc, curr) => acc + curr.totalPrice, 0);
-    const expenses = monthSales.reduce((acc, sale) => {
+    const profit = monthSales.reduce((acc, sale) => {
       const product = products.find(p => p.id === sale.productId);
       const cost = product?.costPrice || (product?.price ? product.price * 0.7 : 0);
-      return acc + (cost * sale.quantity);
+      return acc + (sale.totalPrice - (cost * sale.quantity));
     }, 0);
     return {
       name: month,
       revenue,
-      expenses,
-      profit: revenue - expenses
+      profit
     };
   });
 
-  // 3. Real Income Summary (by Category)
+  // 4. Real Income Summary (by Category)
   const categoryRevenue: Record<string, number> = {};
   sales.forEach(sale => {
     const product = products.find(p => p.id === sale.productId);
@@ -128,203 +158,151 @@ export default function Dashboard({ products, locations, sales, inventory, onRec
   const incomeData = Object.entries(categoryRevenue).map(([name, value], idx) => ({
     name,
     value,
-    color: ['#3b82f6', '#60a5fa', '#93c5fd', '#2563eb', '#1d4ed8'][idx % 5]
-  })).slice(0, 3);
+    color: ['#0073b7', '#00c0ef', '#00a65a', '#f39c12', '#dd4b39'][idx % 5]
+  })).slice(0, 5);
 
-  // 4. Sales Volume per Product (Last 30 Days)
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-  const recentSales = sales.filter(s => safeDate(s.timestamp) >= thirtyDaysAgo);
-  const productSalesVolume: Record<string, number> = {};
-  recentSales.forEach(sale => {
-    productSalesVolume[sale.productId] = (productSalesVolume[sale.productId] || 0) + sale.quantity;
-  });
-
-  const volumeData = Object.entries(productSalesVolume)
-    .map(([productId, volume]) => {
-      const product = products.find(p => p.id === productId);
-      return {
-        name: product?.name || 'Unknown',
-        volume
-      };
-    })
-    .sort((a, b) => b.volume - a.volume)
-    .slice(0, 8); // Top 8 products for better visual fit
-
-  // If no data, provide a fallback for the UI
   if (incomeData.length === 0) {
     incomeData.push({ name: 'No Sales Yet', value: 1, color: '#f1f5f9' });
   }
 
-  const expenseData = [
-    { name: 'Cost of Goods', value: totalExpenses * 0.8, color: '#ef4444' },
-    { name: 'Operating Exp', value: totalExpenses * 0.15, color: '#f87171' },
-    { name: 'Other', value: totalExpenses * 0.05, color: '#fca5a5' },
-  ];
+  // 5. Top Products (Bar Chart)
+  const productSales: Record<string, number> = {};
+  sales.forEach(sale => {
+    const product = products.find(p => p.id === sale.productId);
+    const name = product?.name || 'Unknown';
+    productSales[name] = (productSales[name] || 0) + sale.quantity;
+  });
+
+  const topProductsData = Object.entries(productSales)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
 
   return (
-    <div className="space-y-8 pb-12">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 pb-8 min-w-0">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Financial Overview</h2>
-          <p className="text-sm text-slate-500">Real-time financial performance tracking</p>
+          <h2 className="text-lg font-bold text-slate-800">Overview Dashboard</h2>
+          <p className="text-xs text-slate-500">Real-time inventory metrics & sales insights</p>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2">
           <button 
             onClick={() => setIsSidebarOpen(true)}
-            className="flex items-center space-x-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 transition-all active:scale-95"
+            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 transition-all flex items-center space-x-1.5"
           >
-            <Zap size={16} className="fill-current" />
-            <span>Quick Action</span>
-          </button>
-          <button className="flex items-center space-x-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-all">
-            <Calendar size={16} />
-            <span>This Month</span>
-            <ChevronDown size={14} />
+            <Zap size={14} />
+            <span>Quick Actions</span>
           </button>
         </div>
       </div>
 
-      {/* Top Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Top Stats Cards - Pi-hole Style */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, idx) => (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.1 }}
             key={stat.label}
-            className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm"
+            style={{ backgroundColor: stat.color }}
+            className="relative overflow-hidden p-4 rounded shadow-sm text-white h-24 flex flex-col justify-between"
           >
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">{stat.label}</p>
-            <h3 className={`text-3xl font-black ${stat.color} mb-2`}>{stat.value}</h3>
-            <div className="flex items-center space-x-2">
-              <span className={`text-xs font-bold ${stat.isPositive ? 'text-emerald-500' : 'text-red-500'} flex items-center`}>
-                {stat.isPositive ? <ArrowUpRight size={12} className="mr-0.5" /> : <ArrowDownRight size={12} className="mr-0.5" />}
-                {stat.change}
-              </span>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">vs last month</span>
+            <div className="relative z-10">
+              <h3 className="text-3xl font-bold leading-tight tracking-tight">{stat.value}</h3>
+              <p className="text-xs font-normal opacity-90">{stat.label}</p>
+            </div>
+            <div className="relative z-10 flex items-center text-[10px] opacity-80 italic">
+              {stat.sublabel}
+            </div>
+            <div className="absolute right-2 top-2 opacity-10">
+              <stat.icon size={56} strokeWidth={1.5} />
             </div>
           </motion.div>
         ))}
       </div>
 
-      {/* Profit Trend Line Chart */}
-      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-        <div className="flex items-center justify-between mb-8">
-          <h3 className="text-lg font-bold text-slate-900">Profit Trend</h3>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-blue-500" />
-              <span className="text-xs font-bold text-slate-500">Revenue</span>
+      {/* Main Chart Section - Pi-hole style with Dual Axis */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="bg-white rounded shadow-sm border-t-2 border-slate-200">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+            <h3 className="text-sm font-medium text-slate-700">Daily Sales activity (24h)</h3>
+            <div className="flex items-center space-x-4 text-[10px] font-bold uppercase tracking-wider">
+              <div className="flex items-center space-x-1">
+                <div className="w-2 h-2 rounded-full bg-[#00a65a]" />
+                <span className="text-slate-500">Revenue</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <div className="w-2 h-2 rounded-full bg-[#00c0ef]" />
+                <span className="text-slate-500">Qty</span>
+              </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-red-400" />
-              <span className="text-xs font-bold text-slate-500">Expenses</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 rounded-full bg-emerald-400" />
-              <span className="text-xs font-bold text-slate-500">Net Profit</span>
+          </div>
+          <div className="p-4">
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={hourlyTrendData}>
+                  <CartesianGrid strokeDasharray="1 1" vertical={false} stroke="#f0f0f0" />
+                  <XAxis 
+                    dataKey="time" 
+                    axisLine={{ stroke: '#ddd' }} 
+                    tickLine={false} 
+                    tick={{fill: '#999', fontSize: 10}}
+                    interval={2}
+                  />
+                  <YAxis yAxisId="left" hide />
+                  <YAxis yAxisId="right" orientation="right" hide />
+                  <Tooltip contentStyle={{ fontSize: '11px' }} />
+                  <Area yAxisId="left" type="monotone" dataKey="revenue" stroke="#00a65a" strokeWidth={2} fill="#00a65a" fillOpacity={0.05} />
+                  <Area yAxisId="right" type="monotone" dataKey="sales" stroke="#00c0ef" strokeWidth={2} fill="#00c0ef" fillOpacity={0.1} />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>
-        <div className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={trendData}>
-              <defs>
-                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                </linearGradient>
-                <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.1}/>
-                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
-                </linearGradient>
-                <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis 
-                dataKey="name" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{fill: '#94a3b8', fontSize: 12, fontWeight: 600}}
-                dy={10}
-              />
-              <YAxis 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{fill: '#94a3b8', fontSize: 12, fontWeight: 600}}
-              />
-              <Tooltip 
-                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-              />
-              <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
-              <Area type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={3} fillOpacity={1} fill="url(#colorExpenses)" />
-              <Area type="monotone" dataKey="profit" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorProfit)" />
-            </AreaChart>
-          </ResponsiveContainer>
+
+        <div className="bg-white rounded shadow-sm border-t-2 border-slate-200">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+            <h3 className="text-sm font-medium text-slate-700">Monthly Performance Trend</h3>
+            <div className="flex items-center space-x-4 text-[10px] font-bold uppercase tracking-wider">
+              <div className="flex items-center space-x-1">
+                <div className="w-2 h-2 rounded-full bg-[#00a65a]" />
+                <span className="text-slate-500">Revenue</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <div className="w-2 h-2 rounded-full bg-[#f39c12]" />
+                <span className="text-slate-500">Profit</span>
+              </div>
+            </div>
+          </div>
+          <div className="p-4">
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={monthlyTrendData}>
+                  <CartesianGrid strokeDasharray="1 1" vertical={false} stroke="#f0f0f0" />
+                  <XAxis dataKey="name" axisLine={{ stroke: '#ddd' }} tickLine={false} tick={{fill: '#999', fontSize: 10}} />
+                  <YAxis axisLine={{ stroke: '#ddd' }} tickLine={false} tick={{fill: '#999', fontSize: 10}} />
+                  <Tooltip contentStyle={{ fontSize: '11px' }} />
+                  <Area type="monotone" dataKey="revenue" stroke="#00a65a" strokeWidth={2} fill="#00a65a" fillOpacity={0.05} />
+                  <Area type="monotone" dataKey="profit" stroke="#f39c12" strokeWidth={2} fill="#f39c12" fillOpacity={0.05} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Product Volume Bar Chart */}
-      <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h3 className="text-lg font-bold text-slate-900">Top Selling Products</h3>
-            <p className="text-xs text-slate-500 font-medium">Sales volume over the last 30 days</p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Category Breakdown */}
+        <div className="bg-white rounded shadow-sm border-t-2 border-slate-200">
+          <div className="px-4 py-3 border-b border-slate-100">
+            <h3 className="text-sm font-medium text-slate-700">Revenue by Category</h3>
           </div>
-          <div className="flex items-center space-x-2 px-3 py-1 bg-slate-50 rounded-lg">
-            <Activity size={14} className="text-indigo-500" />
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Market Traction</span>
-          </div>
-        </div>
-        <div className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={volumeData} layout="vertical" margin={{ left: 40, right: 40 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
-              <XAxis type="number" hide />
-              <YAxis 
-                dataKey="name" 
-                type="category" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{fill: '#475569', fontSize: 11, fontWeight: 700}}
-                width={120}
-              />
-              <Tooltip 
-                cursor={{fill: '#f8fafc'}}
-                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                labelStyle={{ fontWeight: 800, color: '#1e293b', marginBottom: '4px' }}
-              />
-              <Bar 
-                dataKey="volume" 
-                fill="#6366f1" 
-                radius={[0, 8, 8, 0]} 
-                barSize={20}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Income Summary Donut */}
-        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-          <h3 className="text-lg font-bold text-slate-900 mb-6">Income Summary</h3>
-          <div className="flex items-center">
-            <div className="h-[200px] w-1/2">
+          <div className="p-4">
+            <div className="h-[180px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie
-                    data={incomeData}
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
+                  <Pie data={incomeData} innerRadius={40} outerRadius={60} paddingAngle={2} dataKey="value" stroke="#fff" strokeWidth={2}>
                     {incomeData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
@@ -333,63 +311,50 @@ export default function Dashboard({ products, locations, sales, inventory, onRec
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="w-1/2 space-y-4">
-              {incomeData.map((item) => (
-                <div key={item.name} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                    <span className="text-sm font-bold text-slate-600">{item.name}</span>
-                  </div>
-                  <span className="text-sm font-black text-slate-900">${item.value.toLocaleString()}</span>
+            <div className="mt-2 grid grid-cols-2 gap-1">
+              {incomeData.slice(0, 4).map((item) => (
+                <div key={item.name} className="flex items-center space-x-1">
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: item.color }} />
+                  <span className="text-[9px] font-medium text-slate-600 truncate">{item.name}</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Expense Summary Donut */}
-        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
-          <h3 className="text-lg font-bold text-slate-900 mb-6">Expense Summary</h3>
-          <div className="flex items-center">
-            <div className="h-[200px] w-1/2">
+        {/* Top Products Bar Chart */}
+        <div className="bg-white rounded shadow-sm border-t-2 border-slate-200">
+          <div className="px-4 py-3 border-b border-slate-100">
+            <h3 className="text-sm font-medium text-slate-700">Top Selling Products</h3>
+          </div>
+          <div className="p-4">
+            <div className="h-[180px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={expenseData}
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {expenseData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
+                <BarChart data={topProductsData} layout="vertical" margin={{ left: -20 }}>
+                  <CartesianGrid strokeDasharray="1 1" horizontal={true} vertical={false} stroke="#f0f0f0" />
+                  <XAxis type="number" hide />
+                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{fill: '#666', fontSize: 9}} width={80} />
                   <Tooltip />
-                </PieChart>
+                  <Bar dataKey="value" fill="#00c0ef" radius={[0, 4, 4, 0]} barSize={12} />
+                </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="w-1/2 space-y-4">
-              {expenseData.map((item) => (
-                <div key={item.name} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                    <span className="text-sm font-bold text-slate-600">{item.name}</span>
-                  </div>
-                  <span className="text-sm font-black text-slate-900">${item.value.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
+          </div>
+        </div>
+
+        {/* Stock Availability */}
+        <div className="bg-white rounded shadow-sm border-t-2 border-slate-200">
+          <div className="px-4 py-3 border-b border-slate-100">
+            <h3 className="text-sm font-medium text-slate-700">Stock Availability</h3>
+          </div>
+          <div className="p-4 overflow-auto max-h-[220px]">
+             <StockAlerts products={products} inventory={inventory} />
           </div>
         </div>
       </div>
 
-      {/* Keep AI Intelligence & Stock Alerts below */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <ForecastChart products={products} sales={sales} />
-        </div>
-        <StockAlerts products={products} inventory={inventory} />
+      <div className="bg-white rounded shadow-sm border-t-2 border-slate-200 p-4">
+        <ForecastChart products={products} sales={sales} />
       </div>
 
       <QuickActionSidebar 
@@ -404,3 +369,4 @@ export default function Dashboard({ products, locations, sales, inventory, onRec
     </div>
   );
 }
+

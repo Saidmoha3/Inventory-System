@@ -27,16 +27,12 @@ async function startServer() {
     }
   });
 
-  // API routes
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
   app.post("/api/forecast", async (req, res) => {
     try {
-      if (!apiKey) {
-        return res.status(400).json({ 
-          error: "Gemini API Key is missing",
-          message: "Fadlan geli GEMINI_API_KEY qaybta Settings > Secrets si aad u bilowdo saadaasha AI."
-        });
-      }
-
       const { sales, products } = req.body;
 
       if (!sales || !Array.isArray(sales) || sales.length === 0) {
@@ -63,6 +59,33 @@ async function startServer() {
         return { date, sales: count };
       });
 
+      if (!apiKey) {
+        console.log("No API Key - Using statistical fallback for forecast");
+        // Simple statistical fallback: Average of last 7 days with some random variation
+        const recentSales = dailySales.slice(-7).map(d => d.sales);
+        const avgRecent = recentSales.reduce((a, b) => a + b, 0) / (recentSales.length || 1);
+        
+        const fallbackForecast = Array.from({ length: 30 }, (_, i) => {
+          const d = new Date();
+          d.setDate(d.getDate() + (i + 1));
+          // Add some seasonal variation and noise
+          const variation = Math.sin(i / 7 * Math.PI) * 0.2; // weekly cycle
+          const noise = (Math.random() - 0.5) * 0.1;
+          const predictedSales = Math.max(0, Math.round(avgRecent * (1 + variation + noise)));
+          
+          return {
+            date: d.toISOString().split('T')[0],
+            predictedSales
+          };
+        });
+
+        return res.json({ 
+          forecast: fallbackForecast,
+          isFallback: true,
+          message: "Saadaashani waa mid ku meel gaar ah (Statistical). Si aad u hesho saadaasha AI-da, fadlan geli GEMINI_API_KEY."
+        });
+      }
+
       const prompt = `Analyze the following daily sales data for the last 30 days and predict the demand (number of units expected to be sold) for the NEXT 30 days.
       
       Historical Sales Data:
@@ -75,7 +98,7 @@ async function startServer() {
       The dates should start from tomorrow.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.7-flash",
+        model: "gemini-3.8-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",

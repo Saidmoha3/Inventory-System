@@ -252,7 +252,7 @@ export default function InventoryList({
         </div>
 
         <div className="flex items-center space-x-3 w-full xl:w-auto">
-          {userRole === 'admin' && (
+          {(userRole === 'Admin' || userRole === 'Manager') && (
             <button 
               onClick={() => handleOpenModal()}
               className="flex-1 sm:flex-none flex items-center justify-center space-x-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-500 shadow-md transition-all"
@@ -275,7 +275,9 @@ export default function InventoryList({
                 <th className="px-6 py-4 text-sm font-bold text-slate-700">Price ($)</th>
                 <th className="px-6 py-4 text-sm font-bold text-slate-700 text-center">Stock</th>
                 <th className="px-6 py-4 text-sm font-bold text-slate-700 text-center">Iibiyey</th>
-                <th className="px-6 py-4 text-sm font-bold text-slate-700 text-right sticky right-0 bg-slate-50 z-10 shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.05)]">Action</th>
+                {(userRole === 'Admin' || userRole === 'Manager') && (
+                  <th className="px-6 py-4 text-sm font-bold text-slate-700 text-right sticky right-0 bg-slate-50 z-10 shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.05)]">Action</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -324,54 +326,56 @@ export default function InventoryList({
                         {totalSold}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right sticky right-0 bg-white group-hover:bg-slate-50 z-10 shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.05)] min-w-[280px]">
-                        <div className="flex items-center justify-end space-x-2">
-                          <button 
-                            onClick={() => handleOpenHistory(product)}
-                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
-                            title="Stock History"
-                          >
-                            <History size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleOpenTransfer(product)}
-                            className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
-                            title="Transfer Stock"
-                          >
-                            <Warehouse size={16} />
-                          </button>
-                          <div className="w-px h-4 bg-slate-100 mx-1" />
-                          <button 
-                            onClick={() => handleOpenModal(product)}
-                            className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700 transition-colors shadow-sm"
-                          >
-                            Edit
-                          </button>
-                          {confirmDeleteId === product.id ? (
-                            <div className="flex items-center space-x-1">
-                              <button 
-                                onClick={() => { handleDelete(product.id); setConfirmDeleteId(null); }}
-                                className="px-3 py-1.5 bg-rose-600 text-white text-xs font-bold rounded hover:bg-rose-700"
-                              >
-                                OK
-                              </button>
-                              <button 
-                                onClick={() => setConfirmDeleteId(null)}
-                                className="px-3 py-1.5 bg-slate-400 text-white text-xs font-bold rounded hover:bg-slate-500"
-                              >
-                                X
-                              </button>
-                            </div>
-                          ) : (
+                    {(userRole === 'Admin' || userRole === 'Manager') && (
+                      <td className="px-6 py-4 text-right sticky right-0 bg-white group-hover:bg-slate-50 z-10 shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.05)] min-w-[280px]">
+                          <div className="flex items-center justify-end space-x-2">
                             <button 
-                              onClick={() => setConfirmDeleteId(product.id)}
-                              className="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-bold rounded hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                              onClick={() => handleOpenHistory(product)}
+                              className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                              title="Stock History"
                             >
-                              Delete
+                              <History size={16} />
                             </button>
-                          )}
-                        </div>
-                    </td>
+                            <button 
+                              onClick={() => handleOpenTransfer(product)}
+                              className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                              title="Transfer Stock"
+                            >
+                              <Warehouse size={16} />
+                            </button>
+                            <div className="w-px h-4 bg-slate-100 mx-1" />
+                            <button 
+                              onClick={() => handleOpenModal(product)}
+                              className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700 transition-colors shadow-sm"
+                            >
+                              Edit
+                            </button>
+                            {confirmDeleteId === product.id ? (
+                              <div className="flex items-center space-x-1">
+                                <button 
+                                  onClick={() => { handleDelete(product.id); setConfirmDeleteId(null); }}
+                                  className="px-3 py-1.5 bg-rose-600 text-white text-xs font-bold rounded hover:bg-rose-700"
+                                >
+                                  OK
+                                </button>
+                                <button 
+                                  onClick={() => setConfirmDeleteId(null)}
+                                  className="px-3 py-1.5 bg-slate-400 text-white text-xs font-bold rounded hover:bg-slate-500"
+                                >
+                                  X
+                                </button>
+                              </div>
+                            ) : (
+                              <button 
+                                onClick={() => setConfirmDeleteId(product.id)}
+                                className="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-bold rounded hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })}

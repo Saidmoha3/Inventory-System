@@ -23,77 +23,91 @@ export default function StockAlerts({ products, inventory, onViewProduct }: Stoc
     };
   }).filter(item => item.isLow || item.isOut);
 
-  if (alerts.length === 0) return null;
+  if (alerts.length === 0) {
+    return (
+      <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center h-full min-h-[300px]">
+        <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mb-4">
+          <Package className="w-8 h-8 text-emerald-500" />
+        </div>
+        <h3 className="text-xl font-black text-slate-900">Inventory Healthy</h3>
+        <p className="text-sm font-medium text-slate-500 mt-2">All items are above minimum stock levels.</p>
+      </div>
+    );
+  }
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100"
+      className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100"
     >
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center">
-            <AlertTriangle className="w-6 h-6 text-amber-600" />
+          <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center">
+            <AlertTriangle className="w-6 h-6 text-rose-600" />
           </div>
           <div>
-            <h3 className="text-xl font-bold text-slate-900">Stock Alerts</h3>
-            <p className="text-sm text-slate-500 font-medium">{alerts.length} items require attention</p>
+            <h3 className="text-xl font-black text-slate-900">Critical Alerts</h3>
+            <p className="text-sm text-slate-500 font-bold">{alerts.length} items need attention</p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {alerts.map(({ product, currentStock, isOut }) => (
+      <div className="space-y-4">
+        {alerts.slice(0, 4).map(({ product, currentStock, isOut }) => (
           <div
             key={product.id}
-            className={`group p-6 rounded-[24px] border-2 transition-all hover:shadow-md ${
+            className={`group p-5 rounded-3xl border transition-all ${
               isOut 
-                ? 'bg-rose-50 border-rose-100 hover:border-rose-200' 
-                : 'bg-amber-50 border-amber-100 hover:border-amber-200'
+                ? 'bg-rose-50/50 border-rose-100 hover:border-rose-200' 
+                : 'bg-amber-50/50 border-amber-100 hover:border-amber-200'
             }`}
           >
-            <div className="flex justify-between items-start mb-4">
-              <div className={`p-3 rounded-xl ${isOut ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'}`}>
-                <Package className="w-5 h-5" />
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-3">
+                <div className={`p-2 rounded-xl ${isOut ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'}`}>
+                  <Package className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-slate-900 truncate max-w-[120px]">
+                    {product.name}
+                  </h4>
+                  <p className="text-[10px] font-bold text-slate-500">{product.category}</p>
+                </div>
               </div>
-              <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                isOut ? 'bg-rose-600 text-white' : 'bg-amber-600 text-white'
+              <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                isOut ? 'bg-rose-600 text-white shadow-lg shadow-rose-200' : 'bg-amber-600 text-white shadow-lg shadow-amber-200'
               }`}>
-                {isOut ? 'Out of Stock' : 'Low Stock'}
+                {isOut ? 'Empty' : 'Low'}
               </span>
             </div>
 
-            <h4 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-emerald-600 transition-colors">
-              {product.name}
-            </h4>
-            <p className="text-xs font-medium text-slate-500 mb-4">{product.sku} • {product.category}</p>
-
-            <div className="flex items-end justify-between">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Current Stock</p>
-                <p className={`text-2xl font-black ${isOut ? 'text-rose-600' : 'text-amber-600'}`}>
-                  {currentStock} <span className="text-sm font-bold opacity-60">{product.unit}</span>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">In Stock</p>
+                <p className={`text-xl font-black ${isOut ? 'text-rose-600' : 'text-amber-600'}`}>
+                  {currentStock} <span className="text-xs opacity-60 font-bold">{product.unit}</span>
                 </p>
               </div>
-              <div className="text-right">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Minimum</p>
-                <p className="text-lg font-bold text-slate-700">{product.minStockLevel}</p>
-              </div>
+              {onViewProduct && (
+                <button
+                  onClick={() => onViewProduct(product.id)}
+                  className="p-2 bg-white rounded-xl text-slate-400 hover:text-indigo-600 hover:shadow-md transition-all"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
             </div>
-
-            {onViewProduct && (
-              <button
-                onClick={() => onViewProduct(product.id)}
-                className="w-full mt-6 py-3 bg-white border border-slate-200 rounded-xl text-slate-600 text-sm font-bold flex items-center justify-center space-x-2 hover:bg-slate-50 transition-colors"
-              >
-                <span>Restock Now</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            )}
           </div>
         ))}
       </div>
+      
+      {alerts.length > 4 && (
+        <button className="w-full mt-6 py-3 text-slate-400 text-xs font-black uppercase tracking-widest hover:text-indigo-600 transition-all">
+          View all {alerts.length} alerts
+        </button>
+      )}
     </motion.div>
   );
 }
+

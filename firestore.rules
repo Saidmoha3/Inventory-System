@@ -1,9 +1,105 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // PUBLIC ACCESS FOR SAMPLE APP
+    // Global catch-all deny
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
+    }
+
+    // Reusable Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return isSignedIn() && exists(userPath) && get(userPath).data.role == 'Admin';
+    }
+    
+    function isManager() {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return isSignedIn() && exists(userPath) && (get(userPath).data.role == 'Manager' || get(userPath).data.role == 'Admin');
+    }
+    
+    function isStaff() {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return isSignedIn() && exists(userPath) && (get(userPath).data.role == 'Staff' || get(userPath).data.role == 'Manager' || get(userPath).data.role == 'Admin');
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow update: if isSignedIn() && (isAdmin() || (request.auth.uid == userId && request.resource.data.role == resource.data.role));
+      allow delete: if isAdmin();
+    }
+
+    // Products Collection
+    match /products/{productId} {
+      allow read: if isSignedIn();
+      allow write: if isManager();
+    }
+
+    // Locations Collection
+    match /locations/{locationId} {
+      allow read: if isSignedIn();
+      allow write: if isManager();
+    }
+
+    // Categories Collection
+    match /categories/{categoryId} {
+      allow read: if isSignedIn();
+      allow write: if isManager();
+    }
+
+    // Suppliers Collection
+    match /suppliers/{supplierId} {
+      allow read: if isSignedIn();
+      allow write: if isManager();
+    }
+
+    // Inventory Collection
+    match /inventory/{inventoryId} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
+    }
+
+    // Sales Collection
+    match /sales/{saleId} {
+      allow read: if isSignedIn();
+      allow create: if isStaff();
+      allow update, delete: if isManager();
+    }
+
+    // Purchases Collection
+    match /purchases/{purchaseId} {
+      allow read: if isSignedIn();
+      allow write: if isManager();
+    }
+
+    // Notifications Collection
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+    
+    // Orders Collection
+    match /orders/{orderId} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
+    }
+    
+    // Stock Movements
+    match /stock_movements/{movementId} {
+      allow read: if isSignedIn();
+      allow create: if isStaff();
+      allow update, delete: if isManager();
     }
   }
 }

@@ -205,7 +205,7 @@ export default function Reports({ products, sales, orders, onUpdateSale, onUpdat
                 <div className="w-32 h-2 bg-slate-100 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-indigo-500" 
-                    style={{ width: `${(product.quantity / topProducts[0].quantity) * 100}%` }}
+                    style={{ width: `${topProducts[0]?.quantity > 0 ? (product.quantity / topProducts[0].quantity) * 100 : 0}%` }}
                   />
                 </div>
               </div>

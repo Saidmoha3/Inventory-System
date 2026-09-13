@@ -2,41 +2,33 @@
 <html lang="en">
   <head>
     <script>
-      // Suppress Vite WebSocket and API Key errors in the console
+      // Suppress Vite WebSocket and API Key errors in the console and UI
       (function() {
-        const originalError = console.error;
-        const originalWarn = console.warn;
-        const originalLog = console.log;
-        const originalDebug = console.debug;
-        
         const isBenignError = (msg) => {
-          if (!msg || typeof msg !== 'string') return false;
-          const lowerMsg = msg.toLowerCase();
-          return lowerMsg.includes('[vite]') || 
-                 lowerMsg.includes('websocket') ||
-                 lowerMsg.includes('fadlan geli gemini_api_key') ||
-                 lowerMsg.includes('@firebase/firestore') ||
-                 lowerMsg.includes('rpc \'listen\' stream');
+          if (!msg) return false;
+          const strMsg = String(msg).toLowerCase();
+          return strMsg.includes('[vite]') || 
+                 strMsg.includes('websocket') ||
+                 strMsg.includes('fadlan geli gemini_api_key') ||
+                 strMsg.includes('gemini_api_key') ||
+                 strMsg.includes('firestore') ||
+                 strMsg.includes('rpc \'listen\' stream') ||
+                 strMsg.includes('webchannelconnection') ||
+                 strMsg.includes('transport errored') ||
+                 strMsg.includes('connected') ||
+                 strMsg.includes('closed without opened');
         };
 
+        const originalError = console.error;
         console.error = (...args) => {
           if (isBenignError(args[0])) return;
           originalError.apply(console, args);
         };
 
+        const originalWarn = console.warn;
         console.warn = (...args) => {
           if (isBenignError(args[0])) return;
           originalWarn.apply(console, args);
-        };
-
-        console.log = (...args) => {
-          if (isBenignError(args[0])) return;
-          originalLog.apply(console, args);
-        };
-
-        console.debug = (...args) => {
-          if (isBenignError(args[0])) return;
-          originalDebug.apply(console, args);
         };
         
         window.addEventListener('unhandledrejection', (event) => {
@@ -44,14 +36,30 @@
           if (isBenignError(msg)) {
             event.preventDefault();
             event.stopPropagation();
+            event.stopImmediatePropagation();
+          }
+        }, true);
+
+        window.addEventListener('error', (event) => {
+          if (isBenignError(event.message) || isBenignError(event.error)) {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
           }
         }, true);
       })();
     </script>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Supermarket Pro</title>
-    <meta name="description" content="Professional supermarket management system with real-time stock tracking, sales analytics, and multi-location support." />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>InventoryPro Garowe</title>
+    <meta name="description" content="Nidaamka maamulka bakhaarka iyo iibka ee Garowe Supermarket" />
+    <meta name="theme-color" content="#4f46e5" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="InventoryPro" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
     <meta property="og:title" content="Supermarket Pro" />
     <meta property="og:description" content="Professional supermarket management system with real-time stock tracking, sales analytics, and multi-location support." />
     <meta property="og:type" content="website" />

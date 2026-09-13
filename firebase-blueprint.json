@@ -1,64 +1,116 @@
 {
-  "collections": {
+  "entities": {
     "users": {
-      "description": "User profiles and roles",
-      "fields": {
-        "email": "string",
-        "name": "string",
-        "role": "string",
-        "locationIds": "array",
-        "createdAt": "timestamp"
-      }
+      "title": "User Profile",
+      "description": "User profile with role-based access control information.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["Admin", "Manager", "Staff"] },
+        "locationIds": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "email", "name", "role"]
     },
     "products": {
-      "description": "Product catalog",
-      "fields": {
-        "name": "string",
-        "sku": "string",
-        "category": "string",
-        "unit": "string",
-        "minStockLevel": "number",
-        "price": "number",
-        "imageUrl": "string",
-        "createdAt": "timestamp"
-      }
+      "title": "Product",
+      "description": "Inventory product details.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "sku": { "type": "string" },
+        "category": { "type": "string" },
+        "unit": { "type": "string" },
+        "minStockLevel": { "type": "number" },
+        "price": { "type": "number" },
+        "costPrice": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "sku", "category", "unit", "minStockLevel", "price"]
     },
     "locations": {
-      "description": "Inventory locations (warehouses/stores)",
-      "fields": {
-        "name": "string",
-        "address": "string",
-        "createdAt": "timestamp"
-      }
+      "title": "Location",
+      "description": "Storage or retail location.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "address": { "type": "string" }
+      },
+      "required": ["id", "name", "address"]
     },
     "inventory": {
-      "description": "Stock levels per product and location",
-      "fields": {
-        "productId": "string",
-        "locationId": "string",
-        "quantity": "number",
-        "lastUpdated": "timestamp"
-      }
+      "title": "Inventory Item",
+      "description": "Stock level for a product at a specific location.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "locationId": { "type": "string" },
+        "quantity": { "type": "number" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "productId", "locationId", "quantity"]
     },
     "sales": {
-      "description": "Sales records for analytics",
-      "fields": {
-        "productId": "string",
-        "locationId": "string",
-        "quantity": "number",
-        "totalPrice": "number",
-        "timestamp": "timestamp"
-      }
+      "title": "Sale",
+      "description": "Sale transaction record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "locationId": { "type": "string" },
+        "quantity": { "type": "number" },
+        "totalPrice": { "type": "number" },
+        "status": { "type": "string", "enum": ["Completed", "Pending", "Cancelled"] },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "productId", "locationId", "quantity", "totalPrice", "timestamp"]
     },
-    "notifications": {
-      "description": "System alerts and notifications",
-      "fields": {
-        "userId": "string",
-        "message": "string",
-        "type": "string",
-        "read": "boolean",
-        "timestamp": "timestamp"
-      }
+    "purchases": {
+      "title": "Purchase",
+      "description": "Inventory purchase record from supplier.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "locationId": { "type": "string" },
+        "supplierId": { "type": "string" },
+        "quantity": { "type": "number" },
+        "costPrice": { "type": "number" },
+        "totalCost": { "type": "number" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "productId", "locationId", "supplierId", "quantity", "costPrice", "totalCost", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "User profiles for auth and RBAC."
+    },
+    "/products/{productId}": {
+      "schema": "products",
+      "description": "Product catalog."
+    },
+    "/locations/{locationId}": {
+      "schema": "locations",
+      "description": "Business locations."
+    },
+    "/inventory/{inventoryId}": {
+      "schema": "inventory",
+      "description": "Stock levels."
+    },
+    "/sales/{saleId}": {
+      "schema": "sales",
+      "description": "Sales records."
+    },
+    "/purchases/{purchaseId}": {
+      "schema": "purchases",
+      "description": "Purchase history."
     }
   }
 }
