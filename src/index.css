@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  .hide-on-print {
+    display: none !important;
+  }
+  
+  .barcode-print-area, .barcode-print-area * {
+    visibility: visible;
+  }
+  
+  .barcode-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  .receipt-print-area, .receipt-print-area * {
+    visibility: visible;
+  }
+  
+  .receipt-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none !important;
+  }
+
+  .print-container, .print-container * {
+    visibility: visible;
+  }
+  
+  .print-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  
+  .sales-table-print-area, .sales-table-print-area * {
+    visibility: visible;
+  }
+  
+  .sales-table-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
