@@ -7,3 +7,8 @@ coverage/
 .env*
 !.env.example
 dev-dist/
+data/
+*.db
+*.db-wal
+*.db-shm
+.vscode/

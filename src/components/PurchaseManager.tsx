@@ -142,18 +142,18 @@ export default function PurchaseManager({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!vendor.trim()) {
-      setError('Fadlan geli magaca vendor-ka (Please enter vendor name)');
+      setError('Please enter vendor name');
       return;
     }
     if (!selectedLocation) {
-      setError('Fadlan dooro goob (Please select a location)');
+      setError('Please select a location');
       return;
     }
     const validLines = lines.filter(
       (l) => (l.productId || (l.isNewProduct && l.productName.trim())) && l.quantity > 0
     );
     if (validLines.length === 0) {
-      setError('Ku dar alaab ugu yaraan mid ah (Add at least one product)');
+      setError('Add at least one product');
       return;
     }
 
@@ -203,7 +203,7 @@ export default function PurchaseManager({
         setIsOpen(false);
       }
     } catch (err: any) {
-      setError(err.message || 'Wuu fashilmay kaydinta (Failed to save purchase)');
+      setError(err.message || 'Failed to save purchase');
     } finally {
       setIsLoading(false);
     }
@@ -220,7 +220,7 @@ export default function PurchaseManager({
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Purchase Orders</h2>
-          <p className="text-slate-500 mt-0.5">Maaree alaabta cusub ee aad shirkadaha ka soo iibsatid</p>
+          <p className="text-slate-500 mt-0.5">Manage incoming inventory purchases from vendors</p>
         </div>
         <button
           onClick={handleOpen}
@@ -298,7 +298,7 @@ export default function PurchaseManager({
                 <tr>
                   <td colSpan={6} className="px-8 py-20 text-center">
                     <ShoppingBag size={40} className="mx-auto text-slate-200 mb-3" />
-                    <p className="text-slate-400 font-bold">Ma jirto wax iibsasho ah oo diiwaangashan</p>
+                    <p className="text-slate-400 font-bold">No purchase records registered</p>
                     <p className="text-slate-300 text-sm mt-1">No purchase records yet</p>
                   </td>
                 </tr>
@@ -339,7 +339,7 @@ export default function PurchaseManager({
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-slate-900">{editingPurchase ? 'Edit Purchase' : 'New Purchase'}</h3>
-                    <p className="text-sm text-slate-400">{editingPurchase ? 'Wax ka beddel Iibka' : 'Iibsasho Cusub'}</p>
+                    <p className="text-sm text-slate-400">{editingPurchase ? 'Edit Purchase Details' : 'New Purchase Order'}</p>
                   </div>
                 </div>
                 <button

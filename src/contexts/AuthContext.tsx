@@ -1,17 +1,20 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { getUserProfile, createUserProfile } from '../lib/db';
 import { UserProfile, UserRole } from '../types';
 
+export interface AppUser {
+  id: string;
+  email: string;
+  user_metadata: { name: string };
+}
+
 interface AuthContextType {
-  user: User | null;
+  user: AppUser | null;
   profile: UserProfile | null;
   loading: boolean;
-  login: () => Promise<void>;
-  loginAsRole: (role: UserRole) => void;
-  loginWithCredentials: (username: string, pass: string) => void;
+  loginWithCredentials: (username: string, pass: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
   isAdmin: boolean;
   isManager: boolean;
   isStaff: boolean;
@@ -19,157 +22,119 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const toAppUser = (p: UserProfile): AppUser => ({
+  id: p.id,
+  email: p.email,
+  user_metadata: { name: p.name }
+});
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loginWithCredentials = (username: string, pass: string) => {
-    if (username === 'admin' && pass === 'admin123') return loginAsRole('Admin');
-    if (username === 'manager' && pass === 'manager123') return loginAsRole('Manager');
-    if (username === 'staff' && pass === 'staff123') return loginAsRole('Staff');
-    throw new Error('Username ama password waa khalad (Invalid credentials)');
-  };
-
-  const loginAsRole = (role: UserRole) => {
-    const roleProfiles: Record<UserRole, { name: string; email: string }> = {
-      Admin: { name: 'Maamulaha Guud', email: 'admin@garowesupermarket.com' },
-      Manager: { name: 'Maareeyaha Ganacsiga', email: 'manager@garowesupermarket.com' },
-      Staff: { name: 'Shaqaalaha Iibka', email: 'staff@garowesupermarket.com' }
-    };
-
-    const info = roleProfiles[role] || roleProfiles.Admin;
-    const localProfile: UserProfile = {
-      id: `${role.toLowerCase()}_user_id`,
-      email: info.email,
-      name: info.name,
-      role: role,
-      locationIds: [],
-      createdAt: new Date()
-    };
-
-    localStorage.setItem('inventory_pro_local_user', JSON.stringify(localProfile));
-    localStorage.setItem('inventory_pro_local_mode', role);
-
-    setUser({
-      id: localProfile.id,
-      email: localProfile.email,
-      user_metadata: { name: localProfile.name }
-    } as unknown as User);
-
-    setProfile(localProfile);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    // 1. Check if user already has an active local session
-    const savedLocal = localStorage.getItem('inventory_pro_local_user');
-    const localMode = localStorage.getItem('inventory_pro_local_mode') as UserRole | null;
-
-    if (savedLocal) {
-      try {
-        const parsed = JSON.parse(savedLocal) as UserProfile;
-        setUser({
-          id: parsed.id,
-          email: parsed.email,
-          user_metadata: { name: parsed.name }
-        } as unknown as User);
-        setProfile(parsed);
-        setLoading(false);
-        return;
-      } catch (e) {
-        console.error('Error parsing local user session:', e);
-      }
-    } else if (localMode && (localMode === 'Admin' || localMode === 'Manager' || localMode === 'Staff')) {
-      loginAsRole(localMode);
-      return;
-    }
-
-    // 2. Listen to Supabase Auth
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      handleAuthChange(session?.user || null);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      handleAuthChange(session?.user || null);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const handleAuthChange = async (supabaseUser: User | null) => {
-    if (localStorage.getItem('inventory_pro_local_user')) {
-      return;
-    }
-
-    setUser(supabaseUser);
-    
-    if (supabaseUser) {
-      let userProfile = await getUserProfile(supabaseUser.id);
-      
-      if (!userProfile) {
-        userProfile = {
-          id: supabaseUser.id,
-          email: supabaseUser.email || '',
-          name: supabaseUser.user_metadata?.full_name || supabaseUser.user_metadata?.name || 'User',
-          role: 'Admin', // Default to Admin for convenience
-          locationIds: [],
-          createdAt: new Date()
-        };
-        try {
-          await createUserProfile(supabaseUser.id, userProfile);
-        } catch (err) {
-          console.warn('Could not save user profile remotely, using local:', err);
-        }
-      }
-      
-      setProfile(userProfile);
+  const applyProfile = (p: UserProfile | null) => {
+    setProfile(p);
+    setUser(p ? toAppUser(p) : null);
+    if (p) {
+      localStorage.setItem('inventory_pro_supabase_user', JSON.stringify(p));
     } else {
-      setProfile(null);
+      localStorage.removeItem('inventory_pro_supabase_user');
     }
-    
-    setLoading(false);
   };
 
-  const login = async () => {
+  const loginWithCredentials = async (username: string, pass: string) => {
+    const ident = username.trim().toLowerCase();
+
+    // Query Supabase users table
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .or(`username.ilike.${ident},email.ilike.${ident}`)
+      .eq('password', pass)
+      .single();
+
+    if (error || !data) {
+      // Fallback for default local admin if project is freshly initialized
+      if (ident === 'admin' && pass === 'admin123') {
+        const fallbackAdmin: UserProfile = {
+          id: 'admin_initial_id',
+          email: 'admin@garowesupermarket.com',
+          name: 'Maamulaha Guud',
+          role: 'Admin',
+          locationIds: [],
+          createdAt: new Date().toISOString()
+        };
+        applyProfile(fallbackAdmin);
+        return;
+      }
+      throw new Error('Username ama password waa khalad (Invalid credentials)');
+    }
+
+    const userProfile: UserProfile = {
+      id: data.id,
+      email: data.email,
+      name: data.name,
+      role: data.role as UserRole,
+      address: data.address,
+      locationIds: data.location_ids || [],
+      createdAt: data.created_at
+    };
+
+    applyProfile(userProfile);
+  };
+
+  const refreshProfile = async () => {
+    if (!profile) return;
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-      });
-      if (error) throw error;
-    } catch (error: any) {
-      console.error('Google Sign In Error:', error);
-      alert(`Cilad: ${error.message || 'Waa la diiday'}. Waxaad isticmaali kartaa doorarka tooska ah ee sare.`);
+      const { data } = await supabase.from('users').select('*').eq('id', profile.id).single();
+      if (data) {
+        applyProfile({
+          id: data.id,
+          email: data.email,
+          name: data.name,
+          role: data.role as UserRole,
+          address: data.address,
+          locationIds: data.location_ids || [],
+          createdAt: data.created_at
+        });
+      }
+    } catch (e) {
+      console.error('Error refreshing profile:', e);
     }
   };
 
   const logout = async () => {
-    localStorage.removeItem('inventory_pro_local_user');
-    localStorage.removeItem('inventory_pro_local_mode');
-    setUser(null);
-    setProfile(null);
-    try {
-      await supabase.auth.signOut();
-    } catch (e) {
-      console.warn('Sign out error:', e);
-    }
+    applyProfile(null);
   };
+
+  useEffect(() => {
+    // Check saved session
+    const saved = localStorage.getItem('inventory_pro_supabase_user');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setProfile(parsed);
+        setUser(toAppUser(parsed));
+      } catch (e) {
+        console.error('Session parse error:', e);
+      }
+    }
+    setLoading(false);
+  }, []);
 
   const isAdmin = profile?.role === 'Admin';
   const isManager = profile?.role === 'Manager' || isAdmin;
   const isStaff = profile?.role === 'Staff' || isManager;
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      profile, 
-      loading, 
-      login, 
-      loginAsRole,
+    <AuthContext.Provider value={{
+      user,
+      profile,
+      loading,
       loginWithCredentials,
       logout,
+      refreshProfile,
       isAdmin,
       isManager,
       isStaff

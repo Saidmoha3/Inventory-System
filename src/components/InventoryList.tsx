@@ -276,7 +276,7 @@ export default function InventoryList({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="px-6 py-4 text-sm font-bold text-slate-700 min-w-[250px]">Alaabta (Product)</th>
+                <th className="px-6 py-4 text-sm font-bold text-slate-700 min-w-[250px]">Product</th>
                 <th className="px-6 py-4 text-sm font-bold text-slate-700">Cost ($)</th>
                 <th className="px-6 py-4 text-sm font-bold text-slate-700">Price ($)</th>
                 <th className="px-6 py-4 text-sm font-bold text-slate-700 text-center">Stock</th>
@@ -547,7 +547,7 @@ export default function InventoryList({
                 </div>
                 <div className="col-span-2">
                   <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-bold text-slate-700">Supplier (Shirkadda)</label>
+                    <label className="block text-sm font-bold text-slate-700">Supplier</label>
                     <button 
                       type="button"
                       onClick={() => setIsCustomSupplier(!isCustomSupplier)}
@@ -599,7 +599,7 @@ export default function InventoryList({
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="block text-sm font-bold text-slate-700">Category (Qaybta)</label>
+                    <label className="block text-sm font-bold text-slate-700">Category</label>
                     <button 
                       type="button"
                       onClick={() => setIsCustomCategory(!isCustomCategory)}
@@ -673,7 +673,7 @@ export default function InventoryList({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Unit (Choose cabirka)</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Unit</label>
                   <select
                     required
                     className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none appearance-none cursor-pointer"
@@ -681,14 +681,14 @@ export default function InventoryList({
                     onChange={(e) => setFormData({...formData, unit: e.target.value})}
                   >
                     <option value="">Choose Unit...</option>
-                    <option value="kg">KG (Kiilo)</option>
-                    <option value="pcs">PCS (Xabo)</option>
-                    <option value="box">BOX (Kartoon)</option>
-                    <option value="bag">BAG (Kiish/Bac)</option>
-                    <option value="ltr">LTR (Litar)</option>
-                    <option value="mtr">MTR (Mitir)</option>
-                    <option value="pkt">PKT (Packet)</option>
-                    <option value="dz">DZ (Darsin)</option>
+                    <option value="kg">KG</option>
+                    <option value="pcs">PCS</option>
+                    <option value="box">BOX</option>
+                    <option value="bag">BAG</option>
+                    <option value="ltr">LTR</option>
+                    <option value="mtr">MTR</option>
+                    <option value="pkt">PKT</option>
+                    <option value="dz">DZ</option>
                   </select>
                 </div>
                 <div className="col-span-2">

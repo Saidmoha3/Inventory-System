@@ -51,7 +51,7 @@ export default function Layout({
   searchQuery,
   setSearchQuery
 }: LayoutProps) {
-  const { logout, loginAsRole } = useAuth();
+  const { logout } = useAuth();
   const { language, toggleLanguage, t } = useLanguage();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
   const [isSidebarHovered, setIsSidebarHovered] = React.useState(false);
@@ -171,14 +171,14 @@ export default function Layout({
         <div className="p-2 border-t border-slate-800/80 space-y-1">
           <button 
             onClick={() => logout()}
-            title={!isExpanded ? "Ku noqo Doorarka (Back)" : undefined}
+            title={!isExpanded ? "Back to Roles" : undefined}
             className="w-full flex items-center px-3 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800/80 rounded-xl transition-all group relative"
           >
             <ArrowLeft size={20} className="shrink-0 group-hover:text-indigo-400" />
-            {isExpanded && <span className="ml-3 text-sm font-medium">Ku noqo (Back)</span>}
+            {isExpanded && <span className="ml-3 text-sm font-medium">Back</span>}
             {!isExpanded && (
               <div className="absolute left-full ml-2 px-2.5 py-1 bg-slate-900 text-white text-xs font-semibold rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-lg border border-slate-700">
-                Ku noqo (Back)
+                Back
               </div>
             )}
           </button>
@@ -255,7 +255,7 @@ export default function Layout({
                   className="w-full flex items-center p-3 text-slate-300 hover:text-white hover:bg-slate-800/80 rounded-xl transition-all"
                 >
                   <ArrowLeft size={20} className="text-indigo-400" />
-                  <span className="ml-3 text-sm font-semibold">Ku noqo Doorarka (Back)</span>
+                  <span className="ml-3 text-sm font-semibold">Back to Roles</span>
                 </button>
                 <button 
                   onClick={() => {
@@ -316,10 +316,10 @@ export default function Layout({
               onClick={() => logout()}
               type="button"
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-bold text-xs transition-all border border-slate-200/80 shadow-xs active:scale-95"
-              title="Ku noqo shaashadda doorarka (Back)"
+              title="Back to Roles screen"
             >
               <ArrowLeft size={15} className="text-slate-600" />
-              <span className="hidden sm:inline">{t('Back', 'Ku noqo')}</span>
+              <span className="hidden sm:inline">{t('Back', 'Back')}</span>
             </button>
 
             {/* Language Toggle */}
@@ -327,7 +327,7 @@ export default function Layout({
               onClick={toggleLanguage}
               type="button"
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-slate-700 font-bold text-xs transition-all border border-slate-200/80 shadow-xs active:scale-95"
-              title="Toggle Language (Beddel Luqadda)"
+              title="Toggle Language"
             >
               <Globe size={15} className="text-slate-600" />
               <span className="font-extrabold uppercase">{language}</span>
@@ -345,12 +345,12 @@ export default function Layout({
                     ? 'bg-violet-50 border-violet-200 text-violet-700 hover:bg-violet-100'
                     : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
                 }`}
-                title="Dooro ama beddel doorkaaga (Switch Role)"
+                title="Account"
               >
                 <span className={`w-2 h-2 rounded-full animate-pulse ${
                   user?.role === 'Admin' ? 'bg-indigo-600' : user?.role === 'Manager' ? 'bg-violet-600' : 'bg-emerald-600'
                 }`} />
-                <span className="hidden md:inline text-slate-500 font-normal">Doorka:</span>
+                <span className="hidden md:inline text-slate-500 font-normal">Role:</span>
                 <span className="font-extrabold">{user?.role || 'Staff'}</span>
                 <ChevronDown size={14} className={`transition-transform duration-200 ${isRoleDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -370,76 +370,21 @@ export default function Layout({
                       className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-slate-200/80 py-2 z-50 overflow-hidden"
                     >
                       <div className="px-3.5 py-2 border-b border-slate-100 bg-slate-50/70">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Beddel Doorka (Switch Role)</p>
-                        <p className="text-[11px] text-emerald-600 font-medium mt-0.5">Xogtaadu waxba kama beddelayso</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Signed in as</p>
+                        <p className="text-sm font-bold text-slate-800 mt-0.5 truncate">{user?.name}</p>
+                        <p className="text-[11px] text-slate-500 truncate">{user?.email}</p>
                       </div>
 
                       <div className="p-1.5 space-y-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            loginAsRole('Admin');
-                            setIsRoleDropdownOpen(false);
-                          }}
-                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs transition-colors ${
-                            user?.role === 'Admin' ? 'bg-indigo-50 font-bold text-indigo-700' : 'hover:bg-slate-50 text-slate-700 font-medium'
-                          }`}
-                        >
-                          <div className="flex items-center space-x-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
-                              <ShieldCheck size={16} />
-                            </div>
-                            <div>
-                              <p className="font-bold">Maamulka (Admin)</p>
-                              <p className="text-[10px] text-slate-400">Access buuxa oo dhan</p>
-                            </div>
+                        <div className="w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-xl text-xs bg-slate-50 text-slate-700">
+                          <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                            {user?.role === 'Admin' ? <ShieldCheck size={16} /> : user?.role === 'Manager' ? <Users size={16} /> : <Box size={16} />}
                           </div>
-                          {user?.role === 'Admin' && <Check size={16} className="text-indigo-600" />}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            loginAsRole('Manager');
-                            setIsRoleDropdownOpen(false);
-                          }}
-                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs transition-colors ${
-                            user?.role === 'Manager' ? 'bg-violet-50 font-bold text-violet-700' : 'hover:bg-slate-50 text-slate-700 font-medium'
-                          }`}
-                        >
-                          <div className="flex items-center space-x-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center shrink-0">
-                              <Users size={16} />
-                            </div>
-                            <div>
-                              <p className="font-bold">Maareeyaha (Manager)</p>
-                              <p className="text-[10px] text-slate-400">Alaabta & Warbixinnada</p>
-                            </div>
+                          <div>
+                            <p className="font-bold">{user?.role}</p>
+                            <p className="text-[10px] text-slate-400">Role is assigned by an Admin</p>
                           </div>
-                          {user?.role === 'Manager' && <Check size={16} className="text-violet-600" />}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            loginAsRole('Staff');
-                            setIsRoleDropdownOpen(false);
-                          }}
-                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-xs transition-colors ${
-                            user?.role === 'Staff' ? 'bg-emerald-50 font-bold text-emerald-700' : 'hover:bg-slate-50 text-slate-700 font-medium'
-                          }`}
-                        >
-                          <div className="flex items-center space-x-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-                              <Box size={16} />
-                            </div>
-                            <div>
-                              <p className="font-bold">Shaqaalaha (Staff)</p>
-                              <p className="text-[10px] text-slate-400">POS & Stock-ga kaliya</p>
-                            </div>
-                          </div>
-                          {user?.role === 'Staff' && <Check size={16} className="text-emerald-600" />}
-                        </button>
+                        </div>
                       </div>
 
                       <div className="p-1.5 border-t border-slate-100 mt-1">
@@ -451,8 +396,8 @@ export default function Layout({
                           }}
                           className="w-full flex items-center space-x-2 px-3 py-2 rounded-xl text-left text-xs text-slate-700 hover:bg-slate-100 font-bold transition-colors"
                         >
-                          <ArrowLeft size={15} className="text-slate-500" />
-                          <span>Ku noqo Shaashadda Doorarka</span>
+                          <LogOut size={15} className="text-slate-500" />
+                          <span>Logout</span>
                         </button>
                       </div>
                     </motion.div>

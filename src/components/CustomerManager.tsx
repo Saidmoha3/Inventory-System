@@ -69,13 +69,13 @@ export default function CustomerManager({ customers, onAdd, onUpdate, onDelete }
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-slate-900">Macaamiisha (Customers)</h2>
+        <h2 className="text-2xl font-bold text-slate-900">Customers</h2>
         <button
           onClick={() => handleOpenModal()}
           className="flex-1 sm:flex-none flex items-center justify-center space-x-2 px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-500 shadow-md transition-all"
         >
           <Plus size={20} />
-          <span>Ku dar Macmiil</span>
+          <span>Add Customer</span>
         </button>
       </div>
       
@@ -85,7 +85,7 @@ export default function CustomerManager({ customers, onAdd, onUpdate, onDelete }
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Raadi macmiil (Magac, Telefoon)..."
+              placeholder="Search customer (Name, Phone)..."
               className="w-full pl-10 pr-4 py-2 bg-white border-none text-sm focus:ring-0 outline-none"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -97,13 +97,13 @@ export default function CustomerManager({ customers, onAdd, onUpdate, onDelete }
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="px-6 py-4 text-sm font-bold text-slate-700">Tix.</th>
-                <th className="px-6 py-4 text-sm font-bold text-slate-700 min-w-[200px]">Magaca</th>
-                <th className="px-6 py-4 text-sm font-bold text-slate-700">Telefoonka</th>
-                <th className="px-6 py-4 text-sm font-bold text-slate-700">Deyn (Debt)</th>
+                <th className="px-6 py-4 text-sm font-bold text-slate-700">No.</th>
+                <th className="px-6 py-4 text-sm font-bold text-slate-700 min-w-[200px]">Name</th>
+                <th className="px-6 py-4 text-sm font-bold text-slate-700">Phone</th>
+                <th className="px-6 py-4 text-sm font-bold text-slate-700">Debt</th>
                 <th className="px-6 py-4 text-sm font-bold text-slate-700">Email</th>
-                <th className="px-6 py-4 text-sm font-bold text-slate-700">Cinwaanka</th>
-                <th className="px-6 py-4 text-sm font-bold text-slate-700 text-right sticky right-0 bg-slate-50 z-10 shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.05)] min-w-[250px]">Ficil (Action)</th>
+                <th className="px-6 py-4 text-sm font-bold text-slate-700">Address</th>
+                <th className="px-6 py-4 text-sm font-bold text-slate-700 text-right sticky right-0 bg-slate-50 z-10 shadow-[-10px_0_15px_-3px_rgba(0,0,0,0.05)] min-w-[250px]">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -170,7 +170,7 @@ export default function CustomerManager({ customers, onAdd, onUpdate, onDelete }
           </table>
           {filteredCustomers.length === 0 && (
             <div className="p-8 text-center text-slate-400">
-              Macmiil lama helin.
+              No customer found.
             </div>
           )}
         </div>
@@ -182,7 +182,7 @@ export default function CustomerManager({ customers, onAdd, onUpdate, onDelete }
           <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="px-8 py-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
               <h3 className="text-xl font-black text-slate-900">
-                {editingCustomer ? 'Beddel Xogta Macmiilka' : 'Diiwaangeli Macmiil Cusub'}
+                {editingCustomer ? 'Edit Customer Data' : 'Register New Customer'}
               </h3>
               <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-white rounded-xl transition-colors">
                 <X size={24} className="text-slate-400" />
@@ -193,7 +193,7 @@ export default function CustomerManager({ customers, onAdd, onUpdate, onDelete }
               <div className="p-8 space-y-6 overflow-y-auto max-h-[60vh]">
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Magaca Macmiilka *</label>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Customer Name *</label>
                     <input
                       type="text"
                       required
@@ -203,7 +203,7 @@ export default function CustomerManager({ customers, onAdd, onUpdate, onDelete }
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Telefoonka *</label>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Phone *</label>
                     <input
                       type="text"
                       required
@@ -213,7 +213,7 @@ export default function CustomerManager({ customers, onAdd, onUpdate, onDelete }
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Email (Ikhtiyaari)</label>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Email (Optional)</label>
                     <input
                       type="email"
                       className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
@@ -222,7 +222,7 @@ export default function CustomerManager({ customers, onAdd, onUpdate, onDelete }
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Cinwaanka (Ikhtiyaari)</label>
+                    <label className="block text-sm font-bold text-slate-700 mb-2">Address (Optional)</label>
                     <input
                       type="text"
                       className="w-full bg-slate-50 border-none rounded-2xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
@@ -239,13 +239,13 @@ export default function CustomerManager({ customers, onAdd, onUpdate, onDelete }
                   onClick={() => setIsModalOpen(false)}
                   className="flex-1 py-4 bg-white border border-slate-200 text-slate-600 font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 transition-all"
                 >
-                  Ka noqo
+                  Cancel
                 </button>
                 <button
                   type="submit"
                   className="flex-1 py-4 bg-blue-600 text-white font-black uppercase tracking-widest rounded-2xl hover:bg-blue-500 shadow-lg shadow-blue-600/20 transition-all"
                 >
-                  {editingCustomer ? 'Kaydi Isbeddelka' : 'Diiwaangeli'}
+                  {editingCustomer ? 'Save Changes' : 'Register'}
                 </button>
               </div>
             </form>
@@ -261,9 +261,9 @@ export default function CustomerManager({ customers, onAdd, onUpdate, onDelete }
               <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <DollarSign size={32} />
               </div>
-              <h3 className="text-2xl font-black text-slate-900">Deyn Bixin</h3>
+              <h3 className="text-2xl font-black text-slate-900">Settle Debt</h3>
               <p className="text-sm text-slate-500 font-bold mt-1">{settleDebtCustomer.name}</p>
-              <p className="text-lg font-black text-rose-600 mt-2">Deynta: ${(settleDebtCustomer.debtBalance || 0).toFixed(2)}</p>
+              <p className="text-lg font-black text-rose-600 mt-2">Debt: ${(settleDebtCustomer.debtBalance || 0).toFixed(2)}</p>
             </div>
             
             <form onSubmit={async (e) => {
@@ -276,7 +276,7 @@ export default function CustomerManager({ customers, onAdd, onUpdate, onDelete }
               }
             }} className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Imisa ayuu bixinayaa?</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2">How much to pay?</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <DollarSign size={18} className="text-slate-400" />
@@ -300,13 +300,13 @@ export default function CustomerManager({ customers, onAdd, onUpdate, onDelete }
                   onClick={() => { setSettleDebtCustomer(null); setSettleAmount(''); }}
                   className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors"
                 >
-                  Kansal
+                  Cancel
                 </button>
                 <button
                   type="submit"
                   className="flex-1 py-3 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-500 transition-colors shadow-lg shadow-rose-600/20"
                 >
-                  Bixi
+                  Pay
                 </button>
               </div>
             </form>

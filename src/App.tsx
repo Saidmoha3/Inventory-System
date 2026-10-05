@@ -4,7 +4,6 @@
  */
 
 import React from 'react';
-import { supabase } from './lib/supabase';
 import { 
   getUserProfile, 
   getUsers,
@@ -75,12 +74,11 @@ import ExpenseManager from './components/ExpenseManager';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import LoginPage from './components/LoginPage';
-import { clearAllData, seedRealData } from './lib/db';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 
 function AppContent() {
-  const { user, profile, loading, isAdmin, isManager, isStaff } = useAuth();
+  const { user, profile, loading, isAdmin, isManager, isStaff, refreshProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -103,11 +101,14 @@ function AppContent() {
   const [editingItem, setEditingItem] = React.useState<any>(null);
   const [dataFormData, setDataFormData] = React.useState<any>({});
 
-  // Real-time Data Listeners with Supabase
+  // Load all data from the database API
   React.useEffect(() => {
     if (!user) return;
 
+    let inFlight = false;
     const fetchAllData = async () => {
+      if (inFlight) return;
+      inFlight = true;
       try {
         const [
           fetchedProducts,
@@ -126,11 +127,11 @@ function AppContent() {
           getCategories(),
           getSuppliers(),
           getCustomers(),
-          getUsers(),
+          isAdmin ? getUsers() : Promise.resolve([] as UserProfile[]),
           getInventory(),
           getSales(),
           getOrders(),
-          getPurchases()
+          isManager ? getPurchases() : Promise.resolve([] as Purchase[])
         ]);
         
         setProducts(fetchedProducts);
@@ -146,33 +147,23 @@ function AppContent() {
 
       } catch (err) {
         console.error("Error fetching data:", err);
+      } finally {
+        inFlight = false;
       }
     };
 
     fetchAllData();
 
-    // Set up Supabase Realtime channel
-    const channel = supabase.channel('public-db-changes')
-      .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
-         switch(payload.table) {
-           case 'products': getProducts().then(setProducts); break;
-           case 'locations': getLocations().then(setLocations); break;
-           case 'categories': getCategories().then(setCategories); break;
-           case 'suppliers': getSuppliers().then(setSuppliers); break;
-           case 'customers': getCustomers().then(setCustomers); break;
-           case 'users': getUsers().then(setUsers); break;
-           case 'inventory': getInventory().then(setInventory); break;
-           case 'sales': getSales().then(data => setSales(data.sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()))); break;
-           case 'orders': getOrders().then(data => setOrders(data.sort((a,b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime()))); break;
-           case 'purchases': getPurchases().then(data => setPurchases(data.sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()))); break;
-         }
-      })
-      .subscribe();
+    // Re-fetch after every write, and periodically so other users' changes show up
+    const handleDbChange = () => { fetchAllData(); };
+    window.addEventListener('db-change', handleDbChange);
+    const interval = window.setInterval(fetchAllData, 20000);
 
     return () => {
-      supabase.removeChannel(channel);
+      window.removeEventListener('db-change', handleDbChange);
+      window.clearInterval(interval);
     };
-  }, [user]);
+  }, [user, isAdmin, isManager]);
 
   const handleOpenDataModal = (type: 'category' | 'supplier' | 'user', item?: any) => {
     setModalType(type);
@@ -355,7 +346,7 @@ function AppContent() {
           {activeTab === 'profile' && profile && (
             <ProfileView 
               user={profile} 
-              onUpdate={(updated) => console.log('Update profile:', updated)}
+              onUpdate={() => { refreshProfile(); }}
             />
           )}
           {activeTab === 'settings' && isAdmin && (

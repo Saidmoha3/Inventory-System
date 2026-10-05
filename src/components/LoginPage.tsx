@@ -5,42 +5,60 @@ import { LayoutGrid, LogIn, ShieldCheck, Users, Box, ArrowRight, Sparkles } from
 import { UserRole } from '../types';
 
 export default function LoginPage() {
-  const { login, loginWithCredentials } = useAuth();
+  const { loginWithCredentials } = useAuth();
   const [username, setUsername] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
+  const [submitting, setSubmitting] = React.useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSubmitting(true);
     try {
-      loginWithCredentials(username, password);
+      await loginWithCredentials(username, password);
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 sm:p-6">
+    <div 
+      className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-cover bg-center bg-no-repeat relative"
+      style={{ backgroundImage: 'url("/bg-login.jpg")' }}
+    >
+      <div className="absolute inset-0 bg-indigo-900/40 backdrop-blur-[2px]"></div>
+      
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-lg w-full"
+        className="max-w-lg w-full relative z-10"
       >
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-600 text-white mb-3 shadow-xl shadow-indigo-600/20">
-            <LayoutGrid size={32} />
+          <div className="inline-flex items-center justify-center w-24 h-24 mb-3 shadow-2xl shadow-black/30 rounded-2xl overflow-hidden bg-white/20 backdrop-blur-md ring-4 ring-white/50">
+            <img src="/logo.jpg" alt="System Logo" className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-1">Inventory System</h1>
-          <p className="text-slate-500 font-medium text-sm">Inventory & Sales Management System</p>
+          <h1 className="text-3xl font-black text-white tracking-tight mb-1 drop-shadow-md">Inventory System</h1>
+          <p className="text-indigo-100 font-medium text-sm drop-shadow">Inventory & Sales Management System</p>
         </div>
 
-        <div className="bg-white rounded-[32px] p-6 sm:p-8 shadow-2xl shadow-slate-200/60 border border-slate-200/80">
+        <div className="bg-white/85 backdrop-blur-2xl rounded-[32px] p-6 sm:p-8 shadow-2xl shadow-black/20 border border-white/60">
           <div className="text-center mb-6">
             <h2 className="text-xl font-bold text-slate-900">Welcome to the System</h2>
             <p className="text-xs text-slate-500 mt-1 font-medium">
               Please enter your credentials to login:
             </p>
+            <div className="mt-3 text-xs bg-indigo-50/50 p-3 rounded-xl text-slate-600 text-left border border-indigo-100/50">
+              <strong className="text-indigo-900">Default Accounts (first run):</strong>
+              <ul className="mt-1 space-y-1">
+                <li>• <b>admin</b> / admin123 (Admin)</li>
+                <li>• <b>manager</b> / manager123 (Manager)</li>
+                <li>• <b>staff</b> / staff123 (Staff)</li>
+              </ul>
+              <p className="mt-1 text-[11px] text-amber-700">Fadlan beddel password-yada kadib (Users → Edit).</p>
+            </div>
           </div>
           
           <form onSubmit={handleSubmit} className="space-y-4 mb-6">
@@ -50,7 +68,7 @@ export default function LoginPage() {
               </div>
             )}
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1">Username</label>
+              <label className="block text-sm font-bold text-slate-700 mb-1">Username / Email</label>
               <input
                 type="text"
                 required
@@ -73,30 +91,15 @@ export default function LoginPage() {
             </div>
             <button
               type="submit"
-              className="w-full flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl font-bold transition-all active:scale-[0.98] shadow-md shadow-indigo-600/20 text-sm mt-2"
+              disabled={submitting}
+              className="w-full flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl font-bold transition-all active:scale-[0.98] shadow-md shadow-indigo-600/20 text-sm mt-2 disabled:opacity-60"
             >
-              <span>Login</span>
+              <span>{submitting ? 'Logging in...' : 'Login'}</span>
               <ArrowRight size={18} />
             </button>
           </form>
 
-          <div className="relative my-6 text-center">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200" />
-            </div>
-            <span className="relative bg-white px-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Or Google Account
-            </span>
-          </div>
 
-          <button
-            onClick={login}
-            type="button"
-            className="w-full flex items-center justify-center space-x-3 bg-slate-900 hover:bg-slate-800 text-white py-3.5 rounded-2xl font-bold transition-all active:scale-[0.98] shadow-lg shadow-slate-900/10 text-sm"
-          >
-            <LogIn size={18} />
-            <span>Sign in with Google</span>
-          </button>
 
           <p className="mt-5 text-center text-xs text-slate-400 font-medium leading-relaxed">
             <Sparkles size={12} className="inline text-amber-500 mr-1" />
@@ -105,7 +108,7 @@ export default function LoginPage() {
         </div>
 
         <div className="mt-6 text-center">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+          <p className="text-[10px] font-black text-white/70 uppercase tracking-[0.2em] drop-shadow-sm">
             Inventory Management System • Garowe
           </p>
         </div>

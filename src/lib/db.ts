@@ -1,356 +1,352 @@
 import { supabase } from './supabase';
-import { Product, Location, InventoryItem, Sale, Purchase, Notification, UserProfile, Category, Supplier, Customer, StockMovement, Order, PurchaseInvoiceInput, PurchaseInvoiceItemInput, Expense } from '../types';
+import { 
+  Product, 
+  Location, 
+  InventoryItem, 
+  Sale, 
+  Purchase, 
+  Notification, 
+  UserProfile, 
+  Category, 
+  Supplier, 
+  Customer, 
+  StockMovement, 
+  Order, 
+  PurchaseInvoiceInput, 
+  Expense 
+} from '../types';
 
-// Helper to handle dates
-const safeToMillis = (dateObj: any) => {
-  if (!dateObj) return 0;
-  if (typeof dateObj === 'string') return new Date(dateObj).getTime();
-  if (dateObj instanceof Date) return dateObj.getTime();
-  // Handle Supabase timestamp strings
-  return new Date(dateObj).getTime();
+// Helper to notify the app of data changes
+export const notifyDbChange = () => {
+  window.dispatchEvent(new Event('db-change'));
 };
 
-// Users
+// ─── Helpers: Case converters ───────────────────────────────────────────────
+const toCamel = (s: string) => s.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+const toSnake = (s: string) => s.replace(/[A-Z]/g, (m) => '_' + m.toLowerCase());
+
+function mapFromDb<T>(row: any): T {
+  if (!row) return row;
+  const out: any = {};
+  for (const [k, v] of Object.entries(row)) {
+    out[toCamel(k)] = v;
+  }
+  return out as T;
+}
+
+function mapToDb(obj: any): any {
+  if (!obj) return obj;
+  const out: any = {};
+  for (const [k, v] of Object.entries(obj)) {
+    out[toSnake(k)] = v;
+  }
+  return out;
+}
+
+// ─── USERS ──────────────────────────────────────────────────────────────────
 export const getUsers = async (): Promise<UserProfile[]> => {
-  const { data, error } = await supabase.from('users').select('*');
-  if (error) console.error('Error fetching users:', error);
-  return data as UserProfile[] || [];
+  const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: true });
+  if (error) {
+    console.error('Error fetching users:', error.message);
+    return [];
+  }
+  return (data || []).map(r => ({
+    ...mapFromDb<UserProfile>(r),
+    locationIds: r.location_ids || []
+  }));
 };
 
 export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
   const { data, error } = await supabase.from('users').select('*').eq('id', uid).single();
-  if (error) {
-    if (error.code !== 'PGRST116') console.error('Error fetching user profile:', error);
-    return null;
-  }
-  return data as UserProfile;
+  if (error || !data) return null;
+  return {
+    ...mapFromDb<UserProfile>(data),
+    locationIds: data.location_ids || []
+  };
 };
 
 export const createUserProfile = async (uid: string, profile: Partial<UserProfile>) => {
-  const { error } = await supabase.from('users').upsert({ id: uid, ...profile });
-  if (error) console.error('Error creating user profile:', error);
+  const toInsert: any = {
+    username: (profile as any).username || profile.email?.split('@')[0],
+    email: profile.email,
+    name: profile.name,
+    role: profile.role || 'Staff',
+    password: profile.password || '123456',
+    address: profile.address || '',
+    location_ids: profile.locationIds || []
+  };
+  const { error } = await supabase.from('users').insert(toInsert);
+  if (error) throw new Error(error.message);
+  notifyDbChange();
 };
 
 export const updateUser = async (id: string, profile: Partial<UserProfile>) => {
-  const { error } = await supabase.from('users').update(profile).eq('id', id);
-  if (error) console.error('Error updating user:', error);
+  const dbData: any = {};
+  if (profile.name !== undefined) dbData.name = profile.name;
+  if (profile.email !== undefined) dbData.email = profile.email;
+  if (profile.role !== undefined) dbData.role = profile.role;
+  if (profile.address !== undefined) dbData.address = profile.address;
+  if (profile.password) dbData.password = profile.password;
+  if (profile.locationIds) dbData.location_ids = profile.locationIds;
+
+  const { error } = await supabase.from('users').update(dbData).eq('id', id);
+  if (error) throw new Error(error.message);
+  notifyDbChange();
 };
 
 export const deleteUser = async (id: string) => {
   const { error } = await supabase.from('users').delete().eq('id', id);
-  if (error) console.error('Error deleting user:', error);
+  if (error) throw new Error(error.message);
+  notifyDbChange();
 };
 
-// Categories
+// ─── CATEGORIES ─────────────────────────────────────────────────────────────
 export const getCategories = async (): Promise<Category[]> => {
-  const { data, error } = await supabase.from('categories').select('*');
-  if (error) console.error('Error fetching categories:', error);
-  return data as Category[] || [];
+  const { data, error } = await supabase.from('categories').select('*').order('name', { ascending: true });
+  if (error) return [];
+  return (data || []).map(r => mapFromDb<Category>(r));
 };
 
 export const addCategory = async (category: Omit<Category, 'id'>) => {
-  const { data, error } = await supabase.from('categories').insert(category).select().single();
-  if (error) console.error('Error adding category:', error);
-  return data;
+  const { data, error } = await supabase.from('categories').insert(mapToDb(category)).select().single();
+  if (error) throw new Error(error.message);
+  notifyDbChange();
+  return mapFromDb<Category>(data);
 };
 
 export const updateCategory = async (id: string, category: Partial<Category>) => {
-  const { error } = await supabase.from('categories').update(category).eq('id', id);
-  if (error) console.error('Error updating category:', error);
+  const { error } = await supabase.from('categories').update(mapToDb(category)).eq('id', id);
+  if (error) throw new Error(error.message);
+  notifyDbChange();
 };
 
 export const deleteCategory = async (id: string) => {
   const { error } = await supabase.from('categories').delete().eq('id', id);
-  if (error) console.error('Error deleting category:', error);
+  if (error) throw new Error(error.message);
+  notifyDbChange();
 };
 
-// Suppliers
+// ─── SUPPLIERS ──────────────────────────────────────────────────────────────
 export const getSuppliers = async (): Promise<Supplier[]> => {
-  const { data, error } = await supabase.from('suppliers').select('*');
-  if (error) console.error('Error fetching suppliers:', error);
-  return data as Supplier[] || [];
+  const { data, error } = await supabase.from('suppliers').select('*').order('name', { ascending: true });
+  if (error) return [];
+  return (data || []).map(r => mapFromDb<Supplier>(r));
 };
 
 export const addSupplier = async (supplier: Omit<Supplier, 'id'>) => {
-  const { data, error } = await supabase.from('suppliers').insert(supplier).select().single();
-  if (error) console.error('Error adding supplier:', error);
-  return data;
+  const { data, error } = await supabase.from('suppliers').insert(mapToDb(supplier)).select().single();
+  if (error) throw new Error(error.message);
+  notifyDbChange();
+  return mapFromDb<Supplier>(data);
 };
 
 export const updateSupplier = async (id: string, supplier: Partial<Supplier>) => {
-  const { error } = await supabase.from('suppliers').update(supplier).eq('id', id);
-  if (error) console.error('Error updating supplier:', error);
+  const { error } = await supabase.from('suppliers').update(mapToDb(supplier)).eq('id', id);
+  if (error) throw new Error(error.message);
+  notifyDbChange();
 };
 
 export const deleteSupplier = async (id: string) => {
   const { error } = await supabase.from('suppliers').delete().eq('id', id);
-  if (error) console.error('Error deleting supplier:', error);
+  if (error) throw new Error(error.message);
+  notifyDbChange();
 };
 
-// Customers
+// ─── CUSTOMERS ──────────────────────────────────────────────────────────────
 export const getCustomers = async (): Promise<Customer[]> => {
-  const { data, error } = await supabase.from('customers').select('*');
-  if (error) console.error('Error fetching customers:', error);
-  return data as Customer[] || [];
+  const { data, error } = await supabase.from('customers').select('*').order('name', { ascending: true });
+  if (error) return [];
+  return (data || []).map(r => mapFromDb<Customer>(r));
 };
 
 export const addCustomer = async (customer: Omit<Customer, 'id' | 'createdAt'>) => {
-  const { data, error } = await supabase.from('customers').insert(customer).select().single();
-  if (error) console.error('Error adding customer:', error);
-  return data;
+  const dbData = mapToDb(customer);
+  const { data, error } = await supabase.from('customers').insert(dbData).select().single();
+  if (error) throw new Error(error.message);
+  notifyDbChange();
+  return mapFromDb<Customer>(data);
 };
 
 export const updateCustomer = async (id: string, customer: Partial<Customer>) => {
-  const { error } = await supabase.from('customers').update(customer).eq('id', id);
-  if (error) console.error('Error updating customer:', error);
+  const { error } = await supabase.from('customers').update(mapToDb(customer)).eq('id', id);
+  if (error) throw new Error(error.message);
+  notifyDbChange();
 };
 
 export const deleteCustomer = async (id: string) => {
   const { error } = await supabase.from('customers').delete().eq('id', id);
-  if (error) console.error('Error deleting customer:', error);
+  if (error) throw new Error(error.message);
+  notifyDbChange();
 };
 
 export const settleCustomerDebt = async (customerId: string, amount: number) => {
-  const { error } = await supabase.rpc('increment_customer_debt', { customer_id: customerId, amount: -amount });
-  if (error) {
-    console.error('Error updating debt using RPC. Falling back to simple update.', error);
-    // Fallback if RPC is not created
-    const { data: customer } = await supabase.from('customers').select('debt_balance').eq('id', customerId).single();
-    if (customer) {
-      const newDebt = (customer.debt_balance || 0) - amount;
-      await supabase.from('customers').update({ debt_balance: newDebt }).eq('id', customerId);
-    }
+  const { data: cust } = await supabase.from('customers').select('debt_balance').eq('id', customerId).single();
+  if (cust) {
+    const current = Number(cust.debt_balance) || 0;
+    const updated = Math.max(0, current - amount);
+    await supabase.from('customers').update({ debt_balance: updated }).eq('id', customerId);
+    notifyDbChange();
   }
 };
 
-// Locations
+// ─── LOCATIONS ──────────────────────────────────────────────────────────────
 export const getLocations = async (): Promise<Location[]> => {
-  const { data, error } = await supabase.from('locations').select('*');
-  if (error) console.error('Error fetching locations:', error);
-  return data as Location[] || [];
+  const { data, error } = await supabase.from('locations').select('*').order('name', { ascending: true });
+  if (error) return [];
+  return (data || []).map(r => mapFromDb<Location>(r));
 };
 
 export const addLocation = async (location: Omit<Location, 'id'>) => {
-  const { data, error } = await supabase.from('locations').insert(location).select().single();
-  if (error) console.error('Error adding location:', error);
-  return data;
+  const { data, error } = await supabase.from('locations').insert(mapToDb(location)).select().single();
+  if (error) throw new Error(error.message);
+  notifyDbChange();
+  return mapFromDb<Location>(data);
 };
 
 export const updateLocation = async (id: string, location: Partial<Location>) => {
-  const { error } = await supabase.from('locations').update(location).eq('id', id);
-  if (error) console.error('Error updating location:', error);
+  const { error } = await supabase.from('locations').update(mapToDb(location)).eq('id', id);
+  if (error) throw new Error(error.message);
+  notifyDbChange();
 };
 
 export const deleteLocation = async (id: string) => {
   const { error } = await supabase.from('locations').delete().eq('id', id);
-  if (error) console.error('Error deleting location:', error);
+  if (error) throw new Error(error.message);
+  notifyDbChange();
 };
 
-// Products
+// ─── PRODUCTS ───────────────────────────────────────────────────────────────
 export const getProducts = async (): Promise<Product[]> => {
-  const { data, error } = await supabase.from('products').select('*');
-  if (error) console.error('Error fetching products:', error);
-  return data as Product[] || [];
+  const { data, error } = await supabase.from('products').select('*').order('name', { ascending: true });
+  if (error) return [];
+  return (data || []).map(r => ({
+    id: r.id,
+    name: r.name,
+    sku: r.sku,
+    category: r.category || 'Uncategorized',
+    supplier: r.supplier || '',
+    unit: r.unit || 'pcs',
+    minStockLevel: Number(r.min_stock_level) || 0,
+    price: Number(r.price) || 0,
+    costPrice: Number(r.cost_price) || 0,
+    imageUrl: r.image_url || '',
+    createdAt: r.created_at
+  }));
 };
 
-export const addProduct = async (product: Omit<Product, 'id' | 'createdAt'>) => {
-  const { data, error } = await supabase.from('products').insert(product).select().single();
-  if (error) console.error('Error adding product:', error);
-  return data;
+export const addProduct = async (product: Omit<Product, 'id' | 'createdAt'>): Promise<Product> => {
+  const dbData = {
+    name: product.name,
+    sku: product.sku || `SKU-${Date.now().toString().slice(-6)}`,
+    category: product.category || 'Uncategorized',
+    supplier: product.supplier || null,
+    unit: product.unit || 'pcs',
+    min_stock_level: product.minStockLevel || 0,
+    price: product.price || 0,
+    cost_price: product.costPrice || 0,
+    image_url: product.imageUrl || null
+  };
+
+  const { data, error } = await supabase.from('products').insert(dbData).select().single();
+  if (error) throw new Error(error.message);
+  notifyDbChange();
+  return {
+    id: data.id,
+    name: data.name,
+    sku: data.sku,
+    category: data.category,
+    supplier: data.supplier,
+    unit: data.unit,
+    minStockLevel: Number(data.min_stock_level),
+    price: Number(data.price),
+    costPrice: Number(data.cost_price),
+    imageUrl: data.image_url,
+    createdAt: data.created_at
+  };
 };
 
 export const updateProduct = async (id: string, product: Partial<Product>) => {
-  const { error } = await supabase.from('products').update(product).eq('id', id);
-  if (error) console.error('Error updating product:', error);
+  const dbData: any = {};
+  if (product.name !== undefined) dbData.name = product.name;
+  if (product.sku !== undefined) dbData.sku = product.sku;
+  if (product.category !== undefined) dbData.category = product.category;
+  if (product.supplier !== undefined) dbData.supplier = product.supplier;
+  if (product.unit !== undefined) dbData.unit = product.unit;
+  if (product.minStockLevel !== undefined) dbData.min_stock_level = product.minStockLevel;
+  if (product.price !== undefined) dbData.price = product.price;
+  if (product.costPrice !== undefined) dbData.cost_price = product.costPrice;
+  if (product.imageUrl !== undefined) dbData.image_url = product.imageUrl;
+
+  const { error } = await supabase.from('products').update(dbData).eq('id', id);
+  if (error) throw new Error(error.message);
+  notifyDbChange();
 };
 
 export const deleteProduct = async (id: string) => {
   const { error } = await supabase.from('products').delete().eq('id', id);
-  if (error) console.error('Error deleting product:', error);
+  if (error) throw new Error(error.message);
+  notifyDbChange();
 };
 
+// ─── INVENTORY & STOCK ──────────────────────────────────────────────────────
 export const getInventory = async (): Promise<InventoryItem[]> => {
   const { data, error } = await supabase.from('inventory').select('*');
-  if (error) console.error('Error fetching inventory:', error);
-  return (data || []).map(item => ({
-    ...item,
-    productId: item.product_id,
-    locationId: item.location_id,
-    lastUpdated: item.last_updated
-  })) as InventoryItem[];
+  if (error) return [];
+  return (data || []).map(r => ({
+    id: r.id,
+    productId: r.product_id,
+    locationId: r.location_id,
+    quantity: Number(r.quantity) || 0,
+    lastUpdated: r.last_updated
+  }));
 };
 
-export const updateStock = async (productId: string, locationId: string, quantityDelta: number, type: StockMovement['type'] = 'adjustment', note?: string) => {
+export const updateStock = async (
+  productId: string,
+  locationId: string,
+  quantityDelta: number,
+  type: StockMovement['type'] = 'adjustment',
+  note?: string
+) => {
   const inventoryId = `${productId}_${locationId}`;
   
-  // Try RPC first for atomic increment
-  const { error: rpcError } = await supabase.rpc('increment_inventory', { row_id: inventoryId, amount: quantityDelta });
-  
-  if (rpcError) {
-    // If RPC fails (e.g. not implemented), fallback to upsert
-    const { data: docSnap } = await supabase.from('inventory').select('*').eq('id', inventoryId).single();
+  // 1. Get current stock
+  const { data: current } = await supabase
+    .from('inventory')
+    .select('quantity')
+    .eq('id', inventoryId)
+    .single();
 
-    if (docSnap) {
-      await supabase.from('inventory').update({
-        quantity: (docSnap.quantity || 0) + quantityDelta,
-        last_updated: new Date().toISOString()
-      }).eq('id', inventoryId);
-    } else {
-      await supabase.from('inventory').insert({
-        id: inventoryId,
-        product_id: productId,
-        location_id: locationId,
-        quantity: quantityDelta,
-      });
-    }
-  }
+  const currentQty = current ? Number(current.quantity) : 0;
+  const newQty = currentQty + quantityDelta;
 
-  // Record movement
-  await recordStockMovement({
-    productId,
-    locationId,
+  // 2. Upsert inventory row
+  const { error: invErr } = await supabase.from('inventory').upsert({
+    id: inventoryId,
+    product_id: productId,
+    location_id: locationId,
+    quantity: newQty,
+    last_updated: new Date().toISOString()
+  });
+
+  if (invErr) throw new Error(invErr.message);
+
+  // 3. Record stock movement
+  await supabase.from('stock_movements').insert({
+    product_id: productId,
+    location_id: locationId,
     type,
     quantity: quantityDelta,
     note: note || (type === 'incoming' ? 'Restock' : type === 'outgoing' ? 'Sale' : 'Manual Adjustment')
   });
-};
 
-// Sales
-export const recordSale = async (sale: Omit<Sale, 'id' | 'timestamp'>) => {
-  // 1. Record sale
-  const { data: saleData, error } = await supabase.from('sales').insert({
-    product_id: sale.productId,
-    location_id: sale.locationId,
-    customer_id: sale.customerId,
-    customer_name: sale.customerName,
-    quantity: sale.quantity,
-    total_price: sale.totalPrice,
-    payment_method: sale.paymentMethod,
-    amount_paid: sale.amountPaid,
-    status: sale.status || 'Completed'
-  }).select().single();
-
-  if (error) {
-    console.error('Error recording sale:', error);
-    return null;
-  }
-  const saleRef = saleData;
-
-  // 2. Update inventory
-  await updateStock(sale.productId, sale.locationId, -sale.quantity, 'outgoing', `Sale Order: ${saleRef.id}`);
-
-  // 3. Update Debt if credit sale
-  if (sale.paymentMethod === 'Credit' && sale.customerId) {
-    const debtAmount = sale.totalPrice - (sale.amountPaid || 0);
-    if (debtAmount > 0) {
-      await settleCustomerDebt(sale.customerId, -debtAmount); // Negative amount inside negative gives positive increment
-    }
-  }
-
-  // 4. Check for low stock alerts
-  const { data: product } = await supabase.from('products').select('*').eq('id', sale.productId).single();
-  const inventoryId = `${sale.productId}_${sale.locationId}`;
-  const { data: inventory } = await supabase.from('inventory').select('*').eq('id', inventoryId).single();
-
-  if (product && inventory) {
-    if (inventory.quantity <= (product.min_stock_level || 0)) {
-      await createNotification({
-        userId: 'admin_placeholder', // Should be targeted to relevant users
-        message: `Low stock alert: ${product.name} at location ${sale.locationId}`,
-        type: 'low_stock',
-        read: false,
-      });
-    }
-  }
-  return saleRef;
-};
-
-export const deleteSale = async (sale: Sale) => {
-  // 1. Delete sale record
-  await supabase.from('sales').delete().eq('id', sale.id);
-
-  // 2. Reverse inventory (restock)
-  await updateStock(sale.productId, sale.locationId, sale.quantity, 'incoming', `Sale Cancelled/Deleted: ${sale.id}`);
-};
-
-export const updateSale = async (oldSale: Sale, newData: Omit<Sale, 'id' | 'timestamp'>) => {
-  // 1. Reverse old inventory
-  await updateStock(oldSale.productId, oldSale.locationId, oldSale.quantity, 'incoming', `Sale Updated (Reversing Old): ${oldSale.id}`);
-  
-  // 2. Update sale record
-  await supabase.from('sales').update({
-    product_id: newData.productId,
-    location_id: newData.locationId,
-    customer_id: newData.customerId,
-    customer_name: newData.customerName,
-    quantity: newData.quantity,
-    total_price: newData.totalPrice,
-    payment_method: newData.paymentMethod,
-    amount_paid: newData.amountPaid,
-    status: newData.status
-  }).eq('id', oldSale.id);
-
-  // 3. Apply new inventory
-  await updateStock(newData.productId, newData.locationId, -newData.quantity, 'outgoing', `Sale Updated (Applying New): ${oldSale.id}`);
-};
-
-export const getSales = async (): Promise<Sale[]> => {
-  const { data, error } = await supabase.from('sales').select('*');
-  if (error) console.error('Error fetching sales:', error);
-  // Map Supabase snake_case back to camelCase
-  return (data || []).map(sale => ({
-    ...sale,
-    productId: sale.product_id,
-    locationId: sale.location_id,
-    customerId: sale.customer_id,
-    customerName: sale.customer_name,
-    totalPrice: sale.total_price,
-    paymentMethod: sale.payment_method,
-    amountPaid: sale.amount_paid
-  })) as Sale[];
-};
-
-export const processReturnSale = async (sale: Sale) => {
-  // 1. Mark sale as returned
-  await supabase.from('sales').update({ status: 'Returned' }).eq('id', sale.id);
-
-  // 2. Return inventory
-  await updateStock(sale.productId, sale.locationId, sale.quantity, 'incoming', `Sale Returned: ${sale.id}`);
-  
-  // 3. Reverse debt if it was a credit sale
-  if (sale.paymentMethod === 'Credit' && sale.customerId) {
-    const debtAmount = sale.totalPrice - (sale.amountPaid || 0);
-    if (debtAmount > 0) {
-       await settleCustomerDebt(sale.customerId, debtAmount);
-    }
-  }
-};
-
-// Stock Movements
-export const getStockMovements = async (productId: string): Promise<StockMovement[]> => {
-  const { data, error } = await supabase.from('stock_movements').select('*').eq('product_id', productId).order('timestamp', { ascending: false });
-  if (error) console.error('Error fetching stock movements:', error);
-  return (data || []).map(m => ({
-    ...m,
-    productId: m.product_id,
-    locationId: m.location_id
-  })) as StockMovement[];
-};
-
-export const recordStockMovement = async (movement: Omit<StockMovement, 'id' | 'timestamp'>) => {
-  await supabase.from('stock_movements').insert({
-    product_id: movement.productId,
-    location_id: movement.locationId,
-    type: movement.type,
-    quantity: movement.quantity,
-    note: movement.note
-  });
+  notifyDbChange();
 };
 
 export const transferStock = async (
-  productId: string, 
-  fromLocationId: string, 
-  toLocationId: string, 
+  productId: string,
+  fromLocationId: string,
+  toLocationId: string,
   quantity: number,
   fromLocationName: string,
   toLocationName: string
@@ -359,95 +355,198 @@ export const transferStock = async (
   await updateStock(productId, toLocationId, quantity, 'incoming', `Transfer from ${fromLocationName}`);
 };
 
-// Notifications (Using realtime instead of polling in App, but here is a simple fetch)
-export const getNotifications = (userId: string, callback: (notifications: Notification[]) => void) => {
-  // For initial load
-  supabase.from('notifications').select('*').eq('user_id', userId).order('timestamp', { ascending: false }).then(({ data }) => {
-     if(data) callback(data.map(n => ({...n, userId: n.user_id} as Notification)));
-  });
-
-  // Supabase Realtime handles the callback on changes (set up in App.tsx typically)
-  return () => {}; // return empty unsubscribe, App.tsx handles channel
+export const getStockMovements = async (productId: string): Promise<StockMovement[]> => {
+  const { data, error } = await supabase
+    .from('stock_movements')
+    .select('*')
+    .eq('product_id', productId)
+    .order('timestamp', { ascending: false });
+  if (error) return [];
+  return (data || []).map(r => ({
+    id: r.id,
+    productId: r.product_id,
+    locationId: r.location_id,
+    type: r.type,
+    quantity: Number(r.quantity),
+    note: r.note,
+    timestamp: r.timestamp
+  }));
 };
 
-export const createNotification = async (notification: Omit<Notification, 'id' | 'timestamp'>) => {
-  await supabase.from('notifications').insert({
-    user_id: notification.userId,
-    message: notification.message,
-    type: notification.type,
-    read: notification.read
-  });
+// ─── SALES ──────────────────────────────────────────────────────────────────
+export const getSales = async (): Promise<Sale[]> => {
+  const { data, error } = await supabase
+    .from('sales')
+    .select('*')
+    .order('timestamp', { ascending: false });
+  if (error) return [];
+  return (data || []).map(r => ({
+    id: r.id,
+    productId: r.product_id,
+    locationId: r.location_id,
+    customerId: r.customer_id,
+    customerName: r.customer_name,
+    quantity: Number(r.quantity),
+    totalPrice: Number(r.total_price),
+    paymentMethod: r.payment_method,
+    amountPaid: Number(r.amount_paid),
+    status: r.status,
+    timestamp: r.timestamp
+  }));
 };
 
-export const markNotificationRead = async (notificationId: string) => {
-  await supabase.from('notifications').update({ read: true }).eq('id', notificationId);
+export const recordSale = async (sale: Omit<Sale, 'id' | 'timestamp'>): Promise<Sale> => {
+  const dbData = {
+    product_id: sale.productId,
+    location_id: sale.locationId,
+    customer_id: sale.customerId || null,
+    customer_name: sale.customerName || null,
+    quantity: sale.quantity,
+    total_price: sale.totalPrice,
+    payment_method: sale.paymentMethod || 'Cash',
+    amount_paid: sale.amountPaid !== undefined ? sale.amountPaid : sale.totalPrice,
+    status: sale.status || 'Completed'
+  };
+
+  const { data, error } = await supabase.from('sales').insert(dbData).select().single();
+  if (error) throw new Error(error.message);
+
+  // Deduct stock
+  await updateStock(sale.productId, sale.locationId, -sale.quantity, 'outgoing', `Sale Order: ${data.id}`);
+
+  // If credit, add debt to customer
+  if (sale.paymentMethod === 'Credit' && sale.customerId) {
+    const debtAmount = sale.totalPrice - (sale.amountPaid || 0);
+    if (debtAmount > 0) {
+      const { data: cust } = await supabase.from('customers').select('debt_balance').eq('id', sale.customerId).single();
+      const currentDebt = cust ? Number(cust.debt_balance) || 0 : 0;
+      await supabase.from('customers').update({ debt_balance: currentDebt + debtAmount }).eq('id', sale.customerId);
+    }
+  }
+
+  notifyDbChange();
+  return {
+    id: data.id,
+    productId: data.product_id,
+    locationId: data.location_id,
+    customerId: data.customer_id,
+    customerName: data.customer_name,
+    quantity: Number(data.quantity),
+    totalPrice: Number(data.total_price),
+    paymentMethod: data.payment_method,
+    amountPaid: Number(data.amount_paid),
+    status: data.status,
+    timestamp: data.timestamp
+  };
 };
 
-// Orders
-export const getOrders = async (): Promise<Order[]> => {
-  const { data, error } = await supabase.from('orders').select('*');
-  if (error) console.error('Error fetching orders:', error);
-  return (data || []).map(o => ({
-    ...o,
-    customerName: o.customer_name,
-    productName: o.product_name,
-    totalPrice: o.total_price,
-    orderDate: o.order_date
-  })) as Order[];
+export const updateSale = async (oldSale: Sale, newData: Omit<Sale, 'id' | 'timestamp'>) => {
+  // 1. Revert old stock
+  await updateStock(oldSale.productId, oldSale.locationId, oldSale.quantity, 'incoming', `Sale Updated (Reversing Old): ${oldSale.id}`);
+
+  // 2. Update sale row
+  const { error } = await supabase.from('sales').update({
+    product_id: newData.productId,
+    location_id: newData.locationId,
+    customer_id: newData.customerId || null,
+    customer_name: newData.customerName || null,
+    quantity: newData.quantity,
+    total_price: newData.totalPrice,
+    payment_method: newData.paymentMethod,
+    amount_paid: newData.amountPaid
+  }).eq('id', oldSale.id);
+
+  if (error) throw new Error(error.message);
+
+  // 3. Apply new stock deduction
+  await updateStock(newData.productId, newData.locationId, -newData.quantity, 'outgoing', `Sale Updated (Applying New): ${oldSale.id}`);
+  notifyDbChange();
 };
 
-export const addOrder = async (order: Omit<Order, 'id'>) => {
-  const { data, error } = await supabase.from('orders').insert({
-    customer_name: order.customerName,
-    address: order.address,
-    product_name: order.productName,
-    category: order.category,
-    quantity: order.quantity,
-    total_price: order.totalPrice,
-    status: order.status || 'Pending'
-  }).select().single();
-  if (error) console.error('Error adding order:', error);
-  return data;
+export const deleteSale = async (sale: Sale) => {
+  const { error } = await supabase.from('sales').delete().eq('id', sale.id);
+  if (error) throw new Error(error.message);
+  await updateStock(sale.productId, sale.locationId, sale.quantity, 'incoming', `Sale Cancelled/Deleted: ${sale.id}`);
+  notifyDbChange();
 };
 
-export const updateOrder = async (id: string, order: Partial<Order>) => {
-  const updateData: any = { ...order };
-  if (order.customerName) updateData.customer_name = order.customerName;
-  if (order.productName) updateData.product_name = order.productName;
-  if (order.totalPrice) updateData.total_price = order.totalPrice;
-  delete updateData.customerName;
-  delete updateData.productName;
-  delete updateData.totalPrice;
-  await supabase.from('orders').update(updateData).eq('id', id);
+export const processReturnSale = async (sale: Sale) => {
+  const { error } = await supabase.from('sales').update({ status: 'Returned' }).eq('id', sale.id);
+  if (error) throw new Error(error.message);
+
+  await updateStock(sale.productId, sale.locationId, sale.quantity, 'incoming', `Sale Returned: ${sale.id}`);
+
+  if (sale.paymentMethod === 'Credit' && sale.customerId) {
+    const debtAmount = sale.totalPrice - (sale.amountPaid || 0);
+    if (debtAmount > 0) {
+      await settleCustomerDebt(sale.customerId, debtAmount);
+    }
+  }
+  notifyDbChange();
 };
 
-export const deleteOrder = async (id: string) => {
-  await supabase.from('orders').delete().eq('id', id);
+// ─── PURCHASES ──────────────────────────────────────────────────────────────
+export const getPurchases = async (): Promise<Purchase[]> => {
+  const { data, error } = await supabase
+    .from('purchases')
+    .select('*')
+    .order('timestamp', { ascending: false });
+  if (error) return [];
+  return (data || []).map(r => ({
+    id: r.id,
+    productId: r.product_id,
+    productName: r.product_name,
+    locationId: r.location_id,
+    supplierId: r.supplier_id,
+    supplierName: r.supplier_name,
+    quantity: Number(r.quantity),
+    costPrice: Number(r.cost_price),
+    totalCost: Number(r.total_cost),
+    invoiceNumber: r.invoice_number,
+    paymentStatus: r.payment_status,
+    notes: r.notes,
+    timestamp: r.timestamp
+  }));
 };
 
-// Purchases
-export const recordPurchase = async (purchase: Omit<Purchase, 'id' | 'timestamp'>) => {
-  const { data, error } = await supabase.from('purchases').insert({
+export const recordPurchase = async (purchase: Omit<Purchase, 'id' | 'timestamp'>): Promise<Purchase> => {
+  const dbData = {
     product_id: purchase.productId,
     product_name: purchase.productName,
     location_id: purchase.locationId,
-    supplier_id: purchase.supplierId,
-    supplier_name: purchase.supplierName,
+    supplier_id: purchase.supplierId || null,
+    supplier_name: purchase.supplierName || null,
     quantity: purchase.quantity,
     cost_price: purchase.costPrice,
     total_cost: purchase.totalCost,
-    invoice_number: purchase.invoiceNumber,
-    payment_status: purchase.paymentStatus,
-    notes: purchase.notes
-  }).select().single();
-  
-  if (data) {
-    await updateStock(purchase.productId, purchase.locationId, purchase.quantity, 'incoming', `Purchase Order: ${data.id}`);
-  }
-  return data;
+    invoice_number: purchase.invoiceNumber || null,
+    payment_status: purchase.paymentStatus || 'Paid',
+    notes: purchase.notes || null
+  };
+
+  const { data, error } = await supabase.from('purchases').insert(dbData).select().single();
+  if (error) throw new Error(error.message);
+
+  await updateStock(purchase.productId, purchase.locationId, purchase.quantity, 'incoming', `Purchase Order: ${data.id}`);
+  notifyDbChange();
+
+  return {
+    id: data.id,
+    productId: data.product_id,
+    productName: data.product_name,
+    locationId: data.location_id,
+    supplierId: data.supplier_id,
+    supplierName: data.supplier_name,
+    quantity: Number(data.quantity),
+    costPrice: Number(data.cost_price),
+    totalCost: Number(data.total_cost),
+    invoiceNumber: data.invoice_number,
+    paymentStatus: data.payment_status,
+    notes: data.notes,
+    timestamp: data.timestamp
+  };
 };
 
-// Multi-item Purchase Invoice
 export const recordPurchaseInvoice = async (invoice: PurchaseInvoiceInput): Promise<string[]> => {
   const savedIds: string[] = [];
   const invoiceNumber = invoice.invoiceNumber || `INV-${Date.now()}`;
@@ -456,70 +555,45 @@ export const recordPurchaseInvoice = async (invoice: PurchaseInvoiceInput): Prom
     let productId = item.productId;
 
     if (item.isNewProduct || !productId) {
-      const { data: prodRef, error } = await supabase.from('products').insert({
+      const prod = await addProduct({
         name: item.productName,
         sku: item.sku || `SKU-${Date.now().toString().slice(-6)}`,
         category: item.category || 'Uncategorized',
         unit: item.unit || 'pcs',
         price: item.sellingPrice || item.costPrice * 1.3,
-        cost_price: item.costPrice,
-        min_stock_level: 5
-      }).select().single();
-      
-      if(prodRef) productId = prodRef.id;
+        costPrice: item.costPrice,
+        minStockLevel: 5
+      });
+      productId = prod.id;
     }
 
     const totalCost = (item.costPrice || 0) * (item.quantity || 0);
 
-    const { data: purchaseRef } = await supabase.from('purchases').insert({
-      product_id: productId,
-      location_id: invoice.locationId,
-      supplier_id: invoice.supplierId,
-      supplier_name: invoice.supplierName,
+    const purchase = await recordPurchase({
+      productId: productId as string,
+      productName: item.productName,
+      locationId: invoice.locationId,
+      supplierId: invoice.supplierId,
+      supplierName: invoice.supplierName,
       quantity: item.quantity,
-      cost_price: item.costPrice,
-      total_cost: isNaN(totalCost) ? 0 : totalCost,
-      invoice_number: invoiceNumber,
-      payment_status: invoice.paymentStatus || 'Paid',
+      costPrice: item.costPrice,
+      totalCost: isNaN(totalCost) ? 0 : totalCost,
+      invoiceNumber: invoiceNumber,
+      paymentStatus: invoice.paymentStatus || 'Paid',
       notes: invoice.notes || ''
-    }).select().single();
+    });
 
-    if (purchaseRef && productId) {
-      await updateStock(productId, invoice.locationId, item.quantity, 'incoming', `Invoice ${invoiceNumber}: ${item.productName}`);
-      savedIds.push(purchaseRef.id);
-    }
+    if (purchase) savedIds.push(purchase.id);
   }
 
   return savedIds;
 };
 
-export const deletePurchase = async (purchase: Purchase) => {
-  await supabase.from('purchases').delete().eq('id', purchase.id);
-  await updateStock(purchase.productId, purchase.locationId, -purchase.quantity, 'outgoing', `Purchase Cancelled/Deleted: ${purchase.id}`);
-};
-
-export const getPurchases = async (): Promise<Purchase[]> => {
-  const { data, error } = await supabase.from('purchases').select('*');
-  return (data || []).map(p => ({
-    ...p,
-    productId: p.product_id,
-    productName: p.product_name,
-    locationId: p.location_id,
-    supplierId: p.supplier_id,
-    supplierName: p.supplier_name,
-    costPrice: p.cost_price,
-    totalCost: p.total_cost,
-    invoiceNumber: p.invoice_number,
-    paymentStatus: p.payment_status
-  })) as Purchase[];
-};
-
 export const updatePurchase = async (oldPurchase: Purchase, newData: Omit<Purchase, 'id' | 'timestamp'>) => {
   await updateStock(oldPurchase.productId, oldPurchase.locationId, -oldPurchase.quantity, 'outgoing', `Purchase Updated (Reversing Old): ${oldPurchase.id}`);
-  
-  await supabase.from('purchases').update({
+
+  const { error } = await supabase.from('purchases').update({
     product_id: newData.productId,
-    product_name: newData.productName,
     location_id: newData.locationId,
     supplier_id: newData.supplierId,
     supplier_name: newData.supplierName,
@@ -531,36 +605,232 @@ export const updatePurchase = async (oldPurchase: Purchase, newData: Omit<Purcha
     notes: newData.notes
   }).eq('id', oldPurchase.id);
 
+  if (error) throw new Error(error.message);
+
   await updateStock(newData.productId, newData.locationId, newData.quantity, 'incoming', `Purchase Updated (Applying New): ${oldPurchase.id}`);
+  notifyDbChange();
 };
 
-// Expenses
+export const deletePurchase = async (purchase: Purchase) => {
+  const { error } = await supabase.from('purchases').delete().eq('id', purchase.id);
+  if (error) throw new Error(error.message);
+  await updateStock(purchase.productId, purchase.locationId, -purchase.quantity, 'outgoing', `Purchase Cancelled/Deleted: ${purchase.id}`);
+  notifyDbChange();
+};
+
+// ─── ORDERS ─────────────────────────────────────────────────────────────────
+export const getOrders = async (): Promise<Order[]> => {
+  const { data, error } = await supabase.from('orders').select('*').order('order_date', { ascending: false });
+  if (error) return [];
+  return (data || []).map(r => ({
+    id: r.id,
+    customerName: r.customer_name,
+    address: r.address,
+    productName: r.product_name,
+    category: r.category,
+    quantity: Number(r.quantity),
+    totalPrice: Number(r.total_price),
+    status: r.status,
+    orderDate: r.order_date
+  }));
+};
+
+export const addOrder = async (order: Omit<Order, 'id'>) => {
+  const dbData = {
+    customer_name: order.customerName,
+    address: order.address,
+    product_name: order.productName,
+    category: order.category,
+    quantity: order.quantity,
+    total_price: order.totalPrice,
+    status: order.status || 'Pending'
+  };
+  const { data, error } = await supabase.from('orders').insert(dbData).select().single();
+  if (error) throw new Error(error.message);
+  notifyDbChange();
+  return {
+    id: data.id,
+    customerName: data.customer_name,
+    address: data.address,
+    productName: data.product_name,
+    category: data.category,
+    quantity: Number(data.quantity),
+    totalPrice: Number(data.total_price),
+    status: data.status,
+    orderDate: data.order_date
+  };
+};
+
+export const updateOrder = async (id: string, order: Partial<Order>) => {
+  const dbData: any = {};
+  if (order.customerName) dbData.customer_name = order.customerName;
+  if (order.address) dbData.address = order.address;
+  if (order.productName) dbData.product_name = order.productName;
+  if (order.category) dbData.category = order.category;
+  if (order.quantity !== undefined) dbData.quantity = order.quantity;
+  if (order.totalPrice !== undefined) dbData.total_price = order.totalPrice;
+  if (order.status) dbData.status = order.status;
+
+  const { error } = await supabase.from('orders').update(dbData).eq('id', id);
+  if (error) throw new Error(error.message);
+  notifyDbChange();
+};
+
+export const deleteOrder = async (id: string) => {
+  const { error } = await supabase.from('orders').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+  notifyDbChange();
+};
+
+// ─── EXPENSES ───────────────────────────────────────────────────────────────
 export const getExpenses = async (): Promise<Expense[]> => {
-  const { data, error } = await supabase.from('expenses').select('*');
-  return (data || []).map(e => ({
-    ...e,
-    createdBy: e.created_by
-  })) as Expense[];
+  const { data, error } = await supabase.from('expenses').select('*').order('date', { ascending: false });
+  if (error) return [];
+  return (data || []).map(r => ({
+    id: r.id,
+    description: r.description,
+    amount: Number(r.amount),
+    category: r.category,
+    date: r.date,
+    createdBy: r.created_by,
+    timestamp: r.timestamp
+  }));
 };
 
 export const addExpense = async (expense: Omit<Expense, 'id' | 'timestamp'>) => {
-  await supabase.from('expenses').insert({
+  const dbData = {
     description: expense.description,
     amount: expense.amount,
-    category: expense.category,
-    date: expense.date,
-    created_by: expense.createdBy
-  });
+    category: expense.category || 'General',
+    date: expense.date || new Date().toISOString().split('T')[0],
+    created_by: expense.createdBy || 'User'
+  };
+  const { error } = await supabase.from('expenses').insert(dbData);
+  if (error) throw new Error(error.message);
+  notifyDbChange();
+};
+
+export const updateExpense = async (id: string, expense: Partial<Expense>) => {
+  const dbData: any = {};
+  if (expense.description) dbData.description = expense.description;
+  if (expense.amount !== undefined) dbData.amount = expense.amount;
+  if (expense.category) dbData.category = expense.category;
+  if (expense.date) dbData.date = expense.date;
+
+  const { error } = await supabase.from('expenses').update(dbData).eq('id', id);
+  if (error) throw new Error(error.message);
+  notifyDbChange();
 };
 
 export const deleteExpense = async (id: string) => {
-  await supabase.from('expenses').delete().eq('id', id);
+  const { error } = await supabase.from('expenses').delete().eq('id', id);
+  if (error) throw new Error(error.message);
+  notifyDbChange();
 };
 
+// ─── NOTIFICATIONS ──────────────────────────────────────────────────────────
+export const getNotifications = (userId: string, callback: (notifications: Notification[]) => void) => {
+  let isMounted = true;
+  supabase
+    .from('notifications')
+    .select('*')
+    .order('timestamp', { ascending: false })
+    .then(({ data }) => {
+      if (isMounted && data) {
+        callback(data.map(r => ({
+          id: r.id,
+          userId: r.user_id,
+          message: r.message,
+          type: r.type,
+          read: r.read,
+          timestamp: r.timestamp
+        })));
+      }
+    });
+
+  // Subscribe to realtime notification changes
+  const channel = supabase
+    .channel('public:notifications')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => {
+      supabase.from('notifications').select('*').order('timestamp', { ascending: false })
+        .then(({ data }) => {
+          if (isMounted && data) {
+            callback(data.map(r => ({
+              id: r.id,
+              userId: r.user_id,
+              message: r.message,
+              type: r.type,
+              read: r.read,
+              timestamp: r.timestamp
+            })));
+          }
+        });
+    })
+    .subscribe();
+
+  return () => {
+    isMounted = false;
+    supabase.removeChannel(channel);
+  };
+};
+
+export const createNotification = async (notification: Omit<Notification, 'id' | 'timestamp'>) => {
+  await supabase.from('notifications').insert({
+    user_id: notification.userId,
+    message: notification.message,
+    type: notification.type || 'system',
+    read: false
+  });
+  notifyDbChange();
+};
+
+export const markNotificationRead = async (notificationId: string) => {
+  await supabase.from('notifications').update({ read: true }).eq('id', notificationId);
+  notifyDbChange();
+};
+
+// ─── ADMIN: RESET & SEED ─────────────────────────────────────────────────────
 export const clearAllData = async () => {
-  console.warn("clearAllData is currently unsupported for Supabase due to foreign key constraints.");
+  const tables = [
+    'notifications',
+    'stock_movements',
+    'sales',
+    'purchases',
+    'inventory',
+    'orders',
+    'expenses',
+    'products',
+    'customers',
+    'suppliers',
+    'categories'
+  ];
+  for (const t of tables) {
+    await supabase.from(t).delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  }
+  notifyDbChange();
 };
 
 export const seedRealData = async () => {
-  console.warn("seedRealData requires running the provided SQL script in the Supabase Dashboard instead.");
+  // Sample seeding
+  const { data: prods } = await supabase.from('products').select('id').limit(1);
+  if (prods && prods.length > 0) return;
+
+  const cat = await addCategory({ name: 'Food', description: 'Cuntooyinka' });
+  const loc = await addLocation({ name: 'Main Store', address: 'Main Market' });
+  const sup = await addSupplier({ name: 'Towfiiq Company', phone: '0612345678', email: 'info@towfiiq.com', address: 'Bakaaraha' });
+  await addCustomer({ name: 'Cali Nuur', phone: '0615112233', debtBalance: 0 });
+
+  const prod = await addProduct({
+    name: 'Bariis Baasto (25kg)',
+    sku: 'BAR-01',
+    category: cat.name,
+    supplier: sup.name,
+    unit: 'bag',
+    price: 25,
+    costPrice: 20,
+    minStockLevel: 10
+  });
+
+  await updateStock(prod.id, loc.id, 100, 'incoming', 'Initial Stock');
+  notifyDbChange();
 };

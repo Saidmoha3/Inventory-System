@@ -6,11 +6,17 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+import { createApiRouter } from "./server/api";
+import { seedDefaultUsers, seedSampleData } from "./server/services";
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: "5mb" }));
+
+  // Initialise the database: default login accounts + sample data on first run only
+  if (seedDefaultUsers() && seedSampleData()) console.log("[db] Sample data imported into new database");
 
   const apiKey = process.env.GEMINI_API_KEY;
   
@@ -128,6 +134,9 @@ async function startServer() {
       });
     }
   });
+
+  // Database-backed CRUD API (must be after the public routes above)
+  app.use("/api", createApiRouter());
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

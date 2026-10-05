@@ -31,7 +31,7 @@ export default function UserManager({ users, onAdd, onUpdate, onDelete }: UserMa
     setFormData({
       name: user.name || '',
       email: user.email || '',
-      password: user.password || '',
+      password: '',
       address: user.address || '',
       role: user.role || 'Staff'
     });
@@ -62,8 +62,9 @@ export default function UserManager({ users, onAdd, onUpdate, onDelete }: UserMa
         });
       }
       handleCancel();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving user:', error);
+      alert(error?.message || 'Failed to save user');
     } finally {
       setIsSubmitting(false);
     }
@@ -115,8 +116,9 @@ export default function UserManager({ users, onAdd, onUpdate, onDelete }: UserMa
                 <label className="block text-sm font-bold text-slate-700 mb-2">Password</label>
                 <input
                   type="password"
-                  required
-                  placeholder="*******"
+                  required={!editingUser}
+                  minLength={6}
+                  placeholder={editingUser ? 'Leave blank to keep current' : '*******'}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}

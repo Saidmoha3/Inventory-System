@@ -39,9 +39,9 @@ export default function ForecastChart({ products, sales }: ForecastChartProps) {
         if (!response.ok) {
           const errMsg = data.error || '';
           if (errMsg.includes('API Key')) {
-            throw new Error('Fadlan geli GEMINI_API_KEY qaybta Settings > Secrets si aad u bilowdo saadaasha AI.');
+            throw new Error('Please enter GEMINI_API_KEY in Settings > Secrets to start AI forecast.');
           }
-          throw new Error(errMsg || 'Nidaamka saadaasha AI hadda lama heli karo.');
+          throw new Error(errMsg || 'AI forecast system is currently unavailable.');
         }
         
         if (data.message) {
@@ -82,7 +82,7 @@ export default function ForecastChart({ products, sales }: ForecastChartProps) {
         if (!err.message?.includes('GEMINI_API_KEY') && !isFetchError) {
           console.error(err);
         }
-        setError(isFetchError ? 'Nidaamka saadaasha AI hadda lama heli karo (Server unreachable).' : err.message || 'AI could not generate forecast at this time.');
+        setError(isFetchError ? 'AI forecast system is currently unavailable (Server unreachable).' : err.message || 'AI could not generate forecast at this time.');
       } finally {
         setLoading(false);
       }

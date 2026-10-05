@@ -202,7 +202,7 @@ export default function SalesManager({ products, locations, sales, inventory, cu
       setPaymentMethod('Cash');
       setAmountPaid('');
     } catch (err: any) {
-      setError(err.message || 'Wuu fashilmay kaydinka iibka (Failed to record sale)');
+      setError(err.message || 'Failed to record sale');
     } finally {
       setIsLoading(false);
     }
@@ -305,7 +305,7 @@ export default function SalesManager({ products, locations, sales, inventory, cu
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Sales & Orders</h2>
-          <p className="text-slate-500">Diiwaangeli iibka maalinlaha ah ee supermarket-ka</p>
+          <p className="text-slate-500">Record daily sales</p>
         </div>
         <div className="flex items-center space-x-3">
           <div className="relative">
@@ -343,7 +343,7 @@ export default function SalesManager({ products, locations, sales, inventory, cu
             className="flex-1 sm:flex-none flex items-center justify-center space-x-2 px-6 py-3 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-500 shadow-md transition-all hide-on-print whitespace-nowrap"
           >
             <Plus size={20} />
-            <span>New Sale (Iib Cusub)</span>
+            <span>New Sale</span>
           </button>
         </div>
       </div>
@@ -355,9 +355,9 @@ export default function SalesManager({ products, locations, sales, inventory, cu
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-widest">Transaction ID</th>
-                <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-widest">Product (Alaabta)</th>
+                <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-widest">Product</th>
                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-widest">Customer</th>
-                <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-widest">Location (Bakhaarka)</th>
+                <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-widest">Location</th>
                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-widest">Quantity</th>
                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-widest">Total Price</th>
                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-widest">Status</th>
@@ -465,7 +465,7 @@ export default function SalesManager({ products, locations, sales, inventory, cu
                         <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-4">
                           <Search className="w-8 h-8 text-slate-300" />
                         </div>
-                        <p className="text-slate-500 font-bold">Ma jirto wax iib ah oo diiwaangashan (No records)</p>
+                        <p className="text-slate-500 font-bold">No sales records found</p>
                       </div>
                     </td>
                   </tr>
@@ -614,14 +614,14 @@ export default function SalesManager({ products, locations, sales, inventory, cu
               <div className="mb-6 p-4 bg-rose-50 text-rose-600 rounded-2xl text-sm font-bold border border-rose-100 flex flex-col space-y-1">
                 <div className="flex items-center space-x-2">
                   <span className="w-2 h-2 bg-rose-600 rounded-full animate-pulse" />
-                  <span>{error.includes('Insufficient stock') ? 'Bakhaarka maba yaallo haraa kugu filan (Insufficient stock)' : error}</span>
+                  <span>{error.includes('Insufficient stock') ? 'Insufficient stock' : error}</span>
                 </div>
                 {error.includes('stock') && (
                   <div className="mt-2 p-3 bg-white/50 rounded-xl">
-                    <p className="text-[11px] text-rose-700 uppercase tracking-tight">Sida loo xaliyo (How to fix):</p>
-                    <p className="text-xs text-slate-600 mt-1">1. Tag qaybta <span className="font-black text-rose-600">"Purchases"</span></p>
-                    <p className="text-xs text-slate-600">2. Diiwaangeli iibsi cusub si stock-gu u kordho</p>
-                    <p className="text-xs text-slate-600">3. Ka dib ku soo laabo halkan si aad u iibiso</p>
+                    <p className="text-[11px] text-rose-700 uppercase tracking-tight">How to fix:</p>
+                    <p className="text-xs text-slate-600 mt-1">1. Go to <span className="font-black text-rose-600">"Purchases"</span></p>
+                    <p className="text-xs text-slate-600">2. Record a new purchase to increase stock</p>
+                    <p className="text-xs text-slate-600">3. Return here to record sale</p>
                   </div>
                 )}
               </div>
@@ -630,7 +630,7 @@ export default function SalesManager({ products, locations, sales, inventory, cu
             <form onSubmit={handleRecordSale} className="space-y-5">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-bold text-slate-700">Select Product (Alaabta)</label>
+                  <label className="block text-sm font-bold text-slate-700">Select Product</label>
                   <button 
                     type="button"
                     onClick={() => {
@@ -678,7 +678,7 @@ export default function SalesManager({ products, locations, sales, inventory, cu
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Customer (Macmiilka) - Ikhtiyaari</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Customer (Optional)</label>
                 <select
                   className="w-full bg-slate-50 border-none rounded-2xl px-4 py-4 focus:ring-2 focus:ring-emerald-500 outline-none appearance-none font-medium"
                   value={selectedCustomer}
@@ -692,7 +692,7 @@ export default function SalesManager({ products, locations, sales, inventory, cu
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Location (Meesha laga iibinayo)</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Location</label>
                 <div className="space-y-3">
                   <select
                     required={!isAddingNewLocation}
@@ -742,7 +742,7 @@ export default function SalesManager({ products, locations, sales, inventory, cu
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Quantity (Tirada)</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Quantity</label>
                   <input
                     type="number"
                     min="1"
@@ -753,13 +753,13 @@ export default function SalesManager({ products, locations, sales, inventory, cu
                   />
                   {selectedProduct && selectedLocation && (
                     <div className={`mt-2 p-3 rounded-xl border-2 flex items-center justify-between ${getProductStockAtLocation(selectedProduct, selectedLocation) < quantity ? 'bg-rose-50 border-rose-100 text-rose-600' : 'bg-emerald-50 border-emerald-100 text-emerald-600'}`}>
-                      <span className="text-[10px] font-black uppercase tracking-widest">Haraaga Bakhaarka:</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest">Stock Balance:</span>
                       <span className="text-sm font-black">{getProductStockAtLocation(selectedProduct, selectedLocation)} {products.find(p => p.id === selectedProduct)?.unit || 'units'}</span>
                     </div>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Total Value (Wadarta)</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Total Value</label>
                   <div className="w-full bg-emerald-50 text-emerald-700 rounded-2xl px-4 py-4 font-black text-xl flex items-center justify-center">
                     ${((products.find(p => p.id === selectedProduct)?.price || 0) * quantity).toLocaleString()}
                   </div>
@@ -774,15 +774,15 @@ export default function SalesManager({ products, locations, sales, inventory, cu
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
                   >
-                    <option value="Cash">Cash (Caddaan)</option>
+                    <option value="Cash">Cash</option>
                     <option value="EVC Plus">EVC Plus</option>
                     <option value="Zaad">Zaad</option>
                     <option value="eDahab">eDahab</option>
-                    <option value="Credit">Credit (Deyn)</option>
+                    <option value="Credit">Credit</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-slate-700 mb-2">Amount Paid (La bixiyay)</label>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Amount Paid</label>
                   <input
                     type="number"
                     min="0"
@@ -793,7 +793,7 @@ export default function SalesManager({ products, locations, sales, inventory, cu
                     onChange={(e) => setAmountPaid(e.target.value)}
                   />
                   {paymentMethod === 'Credit' && !selectedCustomer && (
-                    <p className="text-[10px] text-rose-600 font-bold mt-1 uppercase italic">Macmiil dooro si aad deyn ugu qorto.</p>
+                    <p className="text-[10px] text-rose-600 font-bold mt-1 uppercase italic">Select a customer to record debt.</p>
                   )}
                 </div>
               </div>

@@ -40,7 +40,7 @@ export default function SettingsManager() {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100">
-        <h2 className="text-2xl font-bold text-slate-900 mb-6">System Settings (Maamulka Nidaamka)</h2>
+        <h2 className="text-2xl font-bold text-slate-900 mb-6">System Settings</h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Seed Data Card */}
@@ -50,9 +50,9 @@ export default function SettingsManager() {
                 <Database size={24} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-emerald-900">Geli Xogta Cusub (Import Real Data)</h3>
+                <h3 className="text-lg font-bold text-emerald-900">Import Real Data</h3>
                 <p className="text-emerald-700 text-sm mt-1">
-                  Geli xogta dhabta ah ee Supermarket-ka (Categories, Products, Suppliers, etc).
+                  Import real data for the Supermarket (Categories, Products, Suppliers, etc).
                 </p>
               </div>
             </div>
@@ -65,12 +65,12 @@ export default function SettingsManager() {
               {isSeeding ? (
                 <>
                   <Loader2 size={20} className="animate-spin" />
-                  <span>Waa la gelinayaa...</span>
+                  <span>Importing...</span>
                 </>
               ) : (
                 <>
                   <Database size={20} />
-                  <span>Geli Xogta Supermarket-ka</span>
+                  <span>Import Supermarket Data</span>
                 </>
               )}
             </button>
@@ -83,9 +83,9 @@ export default function SettingsManager() {
                 <AlertTriangle size={24} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-red-900">Nadiifinta Xogta (Reset System)</h3>
+                <h3 className="text-lg font-bold text-red-900">Reset System</h3>
                 <p className="text-red-700 text-sm mt-1">
-                  Taxadar: Tallaabadan waxay tirtiri doontaa dhamaan xogta ku jirta nidaamka.
+                  Warning: This action will delete all data in the system.
                 </p>
               </div>
             </div>
@@ -93,7 +93,7 @@ export default function SettingsManager() {
             {status === 'success' ? (
               <div className="flex items-center space-x-2 text-emerald-600 bg-emerald-50 p-4 rounded-2xl">
                 <CheckCircle2 size={20} />
-                <span className="font-bold">Hadda waa la nadiifiyay!</span>
+                <span className="font-bold">System has been reset!</span>
               </div>
             ) : (
               <div className="flex flex-col space-y-3">
@@ -104,7 +104,7 @@ export default function SettingsManager() {
                     className="w-full flex items-center justify-center space-x-2 px-6 py-4 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg shadow-red-600/20 disabled:opacity-50"
                   >
                     <Trash2 size={20} />
-                    <span>Nadiifi Dhamaan Xogta</span>
+                    <span>Reset All Data</span>
                   </button>
                 ) : (
                   <div className="flex space-x-3">
@@ -112,7 +112,7 @@ export default function SettingsManager() {
                       onClick={() => setConfirmStep(0)}
                       className="flex-1 py-4 bg-slate-200 text-slate-700 font-bold rounded-2xl hover:bg-slate-300 transition-all"
                     >
-                      Maya
+                      No
                     </button>
                     <button
                       onClick={handleReset}
@@ -120,7 +120,7 @@ export default function SettingsManager() {
                       className="flex-1 flex items-center justify-center space-x-2 py-4 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all shadow-lg shadow-red-600/20"
                     >
                       {isDeleting ? <Loader2 size={20} className="animate-spin" /> : <Trash2 size={20} />}
-                      <span>Haa</span>
+                      <span>Yes</span>
                     </button>
                   </div>
                 )}
@@ -132,7 +132,7 @@ export default function SettingsManager() {
         {status === 'success' && (
           <div className="mt-6 text-center animate-bounce">
             <p className="text-emerald-600 font-black uppercase tracking-widest">
-              Shaqadii waa dhammaatay! Bogga ayaa dib u dhalanaya...
+              Action completed! Page is refreshing...
             </p>
           </div>
         )}
