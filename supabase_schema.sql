@@ -186,13 +186,25 @@ BEGIN
     END LOOP;
 END $$;
 
--- Enable Realtime for live updates
-ALTER PUBLICATION supabase_realtime ADD TABLE public.products;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.inventory;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.sales;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.purchases;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.customers;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.notifications;
+-- Enable Realtime for live updates (safe idempotent check)
+DO $$
+DECLARE
+    tbl text;
+    tables_to_add text[] := ARRAY['products', 'inventory', 'sales', 'purchases', 'customers', 'notifications'];
+BEGIN
+    FOREACH tbl IN ARRAY tables_to_add LOOP
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_publication_tables 
+            WHERE pubname = 'supabase_realtime' AND tablename = tbl AND schemaname = 'public'
+        ) THEN
+            BEGIN
+                EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I;', tbl);
+            EXCEPTION WHEN duplicate_object THEN
+                NULL;
+            END;
+        END IF;
+    END LOOP;
+END $$;
 
 -- ==============================================================================
 -- MIGRATED DATA INSERTION (Users, Products, Categories, Stock, Sales)
