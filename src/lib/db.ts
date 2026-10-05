@@ -1,5 +1,4 @@
-import { supabase, isSupabaseConfigured } from './supabase';
-import { api } from './api';
+import { supabase } from './supabase';
 import { 
   Product, 
   Location, 
@@ -44,11 +43,11 @@ function mapToDb(obj: any): any {
 
 // ─── USERS ──────────────────────────────────────────────────────────────────
 export const getUsers = async (): Promise<UserProfile[]> => {
-  if (!isSupabaseConfigured()) {
-    return api<UserProfile[]>('GET', '/users');
-  }
   const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: true });
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Error fetching users from Supabase:', error.message);
+    return [];
+  }
   return (data || []).map(r => ({
     ...mapFromDb<UserProfile>(r),
     locationIds: r.location_ids || []
@@ -56,13 +55,6 @@ export const getUsers = async (): Promise<UserProfile[]> => {
 };
 
 export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
-  if (!isSupabaseConfigured()) {
-    try {
-      return await api<UserProfile>('GET', '/auth/me');
-    } catch {
-      return null;
-    }
-  }
   const { data, error } = await supabase.from('users').select('*').eq('id', uid).single();
   if (error || !data) return null;
   return {
@@ -72,11 +64,6 @@ export const getUserProfile = async (uid: string): Promise<UserProfile | null> =
 };
 
 export const createUserProfile = async (uid: string, profile: Partial<UserProfile>) => {
-  if (!isSupabaseConfigured()) {
-    await api('POST', '/users', profile);
-    notifyDbChange();
-    return;
-  }
   const toInsert: any = {
     username: (profile as any).username || profile.email?.split('@')[0],
     email: profile.email,
@@ -92,13 +79,6 @@ export const createUserProfile = async (uid: string, profile: Partial<UserProfil
 };
 
 export const updateUser = async (id: string, profile: Partial<UserProfile>) => {
-  if (!isSupabaseConfigured()) {
-    const body = { ...profile };
-    if (!body.password) delete body.password;
-    await api('PUT', `/users/${id}`, body);
-    notifyDbChange();
-    return;
-  }
   const dbData: any = {};
   if (profile.name !== undefined) dbData.name = profile.name;
   if (profile.email !== undefined) dbData.email = profile.email;
@@ -113,11 +93,6 @@ export const updateUser = async (id: string, profile: Partial<UserProfile>) => {
 };
 
 export const deleteUser = async (id: string) => {
-  if (!isSupabaseConfigured()) {
-    await api('DELETE', `/users/${id}`);
-    notifyDbChange();
-    return;
-  }
   const { error } = await supabase.from('users').delete().eq('id', id);
   if (error) throw new Error(error.message);
   notifyDbChange();
@@ -125,18 +100,15 @@ export const deleteUser = async (id: string) => {
 
 // ─── CATEGORIES ─────────────────────────────────────────────────────────────
 export const getCategories = async (): Promise<Category[]> => {
-  if (!isSupabaseConfigured()) return api<Category[]>('GET', '/categories');
   const { data, error } = await supabase.from('categories').select('*').order('name', { ascending: true });
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Error fetching categories from Supabase:', error.message);
+    return [];
+  }
   return (data || []).map(r => mapFromDb<Category>(r));
 };
 
 export const addCategory = async (category: Omit<Category, 'id'>) => {
-  if (!isSupabaseConfigured()) {
-    const res = await api<Category>('POST', '/categories', category);
-    notifyDbChange();
-    return res;
-  }
   const { data, error } = await supabase.from('categories').insert(mapToDb(category)).select().single();
   if (error) throw new Error(error.message);
   notifyDbChange();
@@ -144,22 +116,12 @@ export const addCategory = async (category: Omit<Category, 'id'>) => {
 };
 
 export const updateCategory = async (id: string, category: Partial<Category>) => {
-  if (!isSupabaseConfigured()) {
-    await api('PUT', `/categories/${id}`, category);
-    notifyDbChange();
-    return;
-  }
   const { error } = await supabase.from('categories').update(mapToDb(category)).eq('id', id);
   if (error) throw new Error(error.message);
   notifyDbChange();
 };
 
 export const deleteCategory = async (id: string) => {
-  if (!isSupabaseConfigured()) {
-    await api('DELETE', `/categories/${id}`);
-    notifyDbChange();
-    return;
-  }
   const { error } = await supabase.from('categories').delete().eq('id', id);
   if (error) throw new Error(error.message);
   notifyDbChange();
@@ -167,18 +129,15 @@ export const deleteCategory = async (id: string) => {
 
 // ─── SUPPLIERS ──────────────────────────────────────────────────────────────
 export const getSuppliers = async (): Promise<Supplier[]> => {
-  if (!isSupabaseConfigured()) return api<Supplier[]>('GET', '/suppliers');
   const { data, error } = await supabase.from('suppliers').select('*').order('name', { ascending: true });
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Error fetching suppliers from Supabase:', error.message);
+    return [];
+  }
   return (data || []).map(r => mapFromDb<Supplier>(r));
 };
 
 export const addSupplier = async (supplier: Omit<Supplier, 'id'>) => {
-  if (!isSupabaseConfigured()) {
-    const res = await api<Supplier>('POST', '/suppliers', supplier);
-    notifyDbChange();
-    return res;
-  }
   const { data, error } = await supabase.from('suppliers').insert(mapToDb(supplier)).select().single();
   if (error) throw new Error(error.message);
   notifyDbChange();
@@ -186,22 +145,12 @@ export const addSupplier = async (supplier: Omit<Supplier, 'id'>) => {
 };
 
 export const updateSupplier = async (id: string, supplier: Partial<Supplier>) => {
-  if (!isSupabaseConfigured()) {
-    await api('PUT', `/suppliers/${id}`, supplier);
-    notifyDbChange();
-    return;
-  }
   const { error } = await supabase.from('suppliers').update(mapToDb(supplier)).eq('id', id);
   if (error) throw new Error(error.message);
   notifyDbChange();
 };
 
 export const deleteSupplier = async (id: string) => {
-  if (!isSupabaseConfigured()) {
-    await api('DELETE', `/suppliers/${id}`);
-    notifyDbChange();
-    return;
-  }
   const { error } = await supabase.from('suppliers').delete().eq('id', id);
   if (error) throw new Error(error.message);
   notifyDbChange();
@@ -209,18 +158,15 @@ export const deleteSupplier = async (id: string) => {
 
 // ─── CUSTOMERS ──────────────────────────────────────────────────────────────
 export const getCustomers = async (): Promise<Customer[]> => {
-  if (!isSupabaseConfigured()) return api<Customer[]>('GET', '/customers');
   const { data, error } = await supabase.from('customers').select('*').order('name', { ascending: true });
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Error fetching customers from Supabase:', error.message);
+    return [];
+  }
   return (data || []).map(r => mapFromDb<Customer>(r));
 };
 
 export const addCustomer = async (customer: Omit<Customer, 'id' | 'createdAt'>) => {
-  if (!isSupabaseConfigured()) {
-    const res = await api<Customer>('POST', '/customers', customer);
-    notifyDbChange();
-    return res;
-  }
   const { data, error } = await supabase.from('customers').insert(mapToDb(customer)).select().single();
   if (error) throw new Error(error.message);
   notifyDbChange();
@@ -228,33 +174,18 @@ export const addCustomer = async (customer: Omit<Customer, 'id' | 'createdAt'>) 
 };
 
 export const updateCustomer = async (id: string, customer: Partial<Customer>) => {
-  if (!isSupabaseConfigured()) {
-    await api('PUT', `/customers/${id}`, customer);
-    notifyDbChange();
-    return;
-  }
   const { error } = await supabase.from('customers').update(mapToDb(customer)).eq('id', id);
   if (error) throw new Error(error.message);
   notifyDbChange();
 };
 
 export const deleteCustomer = async (id: string) => {
-  if (!isSupabaseConfigured()) {
-    await api('DELETE', `/customers/${id}`);
-    notifyDbChange();
-    return;
-  }
   const { error } = await supabase.from('customers').delete().eq('id', id);
   if (error) throw new Error(error.message);
   notifyDbChange();
 };
 
 export const settleCustomerDebt = async (customerId: string, amount: number) => {
-  if (!isSupabaseConfigured()) {
-    await api('POST', `/customers/${customerId}/settle`, { amount });
-    notifyDbChange();
-    return;
-  }
   const { data: cust } = await supabase.from('customers').select('debt_balance').eq('id', customerId).single();
   if (cust) {
     const current = Number(cust.debt_balance) || 0;
@@ -266,18 +197,15 @@ export const settleCustomerDebt = async (customerId: string, amount: number) => 
 
 // ─── LOCATIONS ──────────────────────────────────────────────────────────────
 export const getLocations = async (): Promise<Location[]> => {
-  if (!isSupabaseConfigured()) return api<Location[]>('GET', '/locations');
   const { data, error } = await supabase.from('locations').select('*').order('name', { ascending: true });
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Error fetching locations from Supabase:', error.message);
+    return [];
+  }
   return (data || []).map(r => mapFromDb<Location>(r));
 };
 
 export const addLocation = async (location: Omit<Location, 'id'>) => {
-  if (!isSupabaseConfigured()) {
-    const res = await api<Location>('POST', '/locations', location);
-    notifyDbChange();
-    return res;
-  }
   const { data, error } = await supabase.from('locations').insert(mapToDb(location)).select().single();
   if (error) throw new Error(error.message);
   notifyDbChange();
@@ -285,22 +213,12 @@ export const addLocation = async (location: Omit<Location, 'id'>) => {
 };
 
 export const updateLocation = async (id: string, location: Partial<Location>) => {
-  if (!isSupabaseConfigured()) {
-    await api('PUT', `/locations/${id}`, location);
-    notifyDbChange();
-    return;
-  }
   const { error } = await supabase.from('locations').update(mapToDb(location)).eq('id', id);
   if (error) throw new Error(error.message);
   notifyDbChange();
 };
 
 export const deleteLocation = async (id: string) => {
-  if (!isSupabaseConfigured()) {
-    await api('DELETE', `/locations/${id}`);
-    notifyDbChange();
-    return;
-  }
   const { error } = await supabase.from('locations').delete().eq('id', id);
   if (error) throw new Error(error.message);
   notifyDbChange();
@@ -308,9 +226,11 @@ export const deleteLocation = async (id: string) => {
 
 // ─── PRODUCTS ───────────────────────────────────────────────────────────────
 export const getProducts = async (): Promise<Product[]> => {
-  if (!isSupabaseConfigured()) return api<Product[]>('GET', '/products');
   const { data, error } = await supabase.from('products').select('*').order('name', { ascending: true });
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Error fetching products from Supabase:', error.message);
+    return [];
+  }
   return (data || []).map(r => ({
     id: r.id,
     name: r.name,
@@ -327,11 +247,6 @@ export const getProducts = async (): Promise<Product[]> => {
 };
 
 export const addProduct = async (product: Omit<Product, 'id' | 'createdAt'>): Promise<Product> => {
-  if (!isSupabaseConfigured()) {
-    const res = await api<Product>('POST', '/products', product);
-    notifyDbChange();
-    return res;
-  }
   const dbData = {
     name: product.name,
     sku: product.sku || `SKU-${Date.now().toString().slice(-6)}`,
@@ -363,11 +278,6 @@ export const addProduct = async (product: Omit<Product, 'id' | 'createdAt'>): Pr
 };
 
 export const updateProduct = async (id: string, product: Partial<Product>) => {
-  if (!isSupabaseConfigured()) {
-    await api('PUT', `/products/${id}`, product);
-    notifyDbChange();
-    return;
-  }
   const dbData: any = {};
   if (product.name !== undefined) dbData.name = product.name;
   if (product.sku !== undefined) dbData.sku = product.sku;
@@ -385,11 +295,6 @@ export const updateProduct = async (id: string, product: Partial<Product>) => {
 };
 
 export const deleteProduct = async (id: string) => {
-  if (!isSupabaseConfigured()) {
-    await api('DELETE', `/products/${id}`);
-    notifyDbChange();
-    return;
-  }
   const { error } = await supabase.from('products').delete().eq('id', id);
   if (error) throw new Error(error.message);
   notifyDbChange();
@@ -397,9 +302,11 @@ export const deleteProduct = async (id: string) => {
 
 // ─── INVENTORY & STOCK ──────────────────────────────────────────────────────
 export const getInventory = async (): Promise<InventoryItem[]> => {
-  if (!isSupabaseConfigured()) return api<InventoryItem[]>('GET', '/inventory');
   const { data, error } = await supabase.from('inventory').select('*');
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Error fetching inventory from Supabase:', error.message);
+    return [];
+  }
   return (data || []).map(r => ({
     id: r.id,
     productId: r.product_id,
@@ -416,12 +323,8 @@ export const updateStock = async (
   type: StockMovement['type'] = 'adjustment',
   note?: string
 ) => {
-  if (!isSupabaseConfigured()) {
-    await api('POST', '/inventory/adjust', { productId, locationId, quantity: quantityDelta, type, note });
-    notifyDbChange();
-    return;
-  }
   const inventoryId = `${productId}_${locationId}`;
+  
   const { data: current } = await supabase
     .from('inventory')
     .select('quantity')
@@ -460,19 +363,11 @@ export const transferStock = async (
   fromLocationName: string,
   toLocationName: string
 ) => {
-  if (!isSupabaseConfigured()) {
-    await api('POST', '/inventory/transfer', { productId, fromLocationId, toLocationId, quantity });
-    notifyDbChange();
-    return;
-  }
   await updateStock(productId, fromLocationId, -quantity, 'outgoing', `Transfer to ${toLocationName}`);
   await updateStock(productId, toLocationId, quantity, 'incoming', `Transfer from ${fromLocationName}`);
 };
 
 export const getStockMovements = async (productId: string): Promise<StockMovement[]> => {
-  if (!isSupabaseConfigured()) {
-    return api<StockMovement[]>('GET', `/stock-movements?productId=${encodeURIComponent(productId)}`);
-  }
   const { data, error } = await supabase
     .from('stock_movements')
     .select('*')
@@ -492,9 +387,14 @@ export const getStockMovements = async (productId: string): Promise<StockMovemen
 
 // ─── SALES ──────────────────────────────────────────────────────────────────
 export const getSales = async (): Promise<Sale[]> => {
-  if (!isSupabaseConfigured()) return api<Sale[]>('GET', '/sales');
-  const { data, error } = await supabase.from('sales').select('*').order('timestamp', { ascending: false });
-  if (error) throw new Error(error.message);
+  const { data, error } = await supabase
+    .from('sales')
+    .select('*')
+    .order('timestamp', { ascending: false });
+  if (error) {
+    console.error('Error fetching sales from Supabase:', error.message);
+    return [];
+  }
   return (data || []).map(r => ({
     id: r.id,
     productId: r.product_id,
@@ -511,11 +411,6 @@ export const getSales = async (): Promise<Sale[]> => {
 };
 
 export const recordSale = async (sale: Omit<Sale, 'id' | 'timestamp'>): Promise<Sale> => {
-  if (!isSupabaseConfigured()) {
-    const res = await api<Sale>('POST', '/sales', sale);
-    notifyDbChange();
-    return res;
-  }
   const dbData = {
     product_id: sale.productId,
     location_id: sale.locationId,
@@ -559,11 +454,6 @@ export const recordSale = async (sale: Omit<Sale, 'id' | 'timestamp'>): Promise<
 };
 
 export const updateSale = async (oldSale: Sale, newData: Omit<Sale, 'id' | 'timestamp'>) => {
-  if (!isSupabaseConfigured()) {
-    await api('PUT', `/sales/${oldSale.id}`, newData);
-    notifyDbChange();
-    return;
-  }
   await updateStock(oldSale.productId, oldSale.locationId, oldSale.quantity, 'incoming', `Sale Updated (Reversing Old): ${oldSale.id}`);
 
   const { error } = await supabase.from('sales').update({
@@ -584,11 +474,6 @@ export const updateSale = async (oldSale: Sale, newData: Omit<Sale, 'id' | 'time
 };
 
 export const deleteSale = async (sale: Sale) => {
-  if (!isSupabaseConfigured()) {
-    await api('DELETE', `/sales/${sale.id}`);
-    notifyDbChange();
-    return;
-  }
   const { error } = await supabase.from('sales').delete().eq('id', sale.id);
   if (error) throw new Error(error.message);
   await updateStock(sale.productId, sale.locationId, sale.quantity, 'incoming', `Sale Cancelled/Deleted: ${sale.id}`);
@@ -596,11 +481,6 @@ export const deleteSale = async (sale: Sale) => {
 };
 
 export const processReturnSale = async (sale: Sale) => {
-  if (!isSupabaseConfigured()) {
-    await api('POST', `/sales/${sale.id}/return`);
-    notifyDbChange();
-    return;
-  }
   const { error } = await supabase.from('sales').update({ status: 'Returned' }).eq('id', sale.id);
   if (error) throw new Error(error.message);
 
@@ -617,9 +497,14 @@ export const processReturnSale = async (sale: Sale) => {
 
 // ─── PURCHASES ──────────────────────────────────────────────────────────────
 export const getPurchases = async (): Promise<Purchase[]> => {
-  if (!isSupabaseConfigured()) return api<Purchase[]>('GET', '/purchases');
-  const { data, error } = await supabase.from('purchases').select('*').order('timestamp', { ascending: false });
-  if (error) throw new Error(error.message);
+  const { data, error } = await supabase
+    .from('purchases')
+    .select('*')
+    .order('timestamp', { ascending: false });
+  if (error) {
+    console.error('Error fetching purchases from Supabase:', error.message);
+    return [];
+  }
   return (data || []).map(r => ({
     id: r.id,
     productId: r.product_id,
@@ -638,11 +523,6 @@ export const getPurchases = async (): Promise<Purchase[]> => {
 };
 
 export const recordPurchase = async (purchase: Omit<Purchase, 'id' | 'timestamp'>): Promise<Purchase> => {
-  if (!isSupabaseConfigured()) {
-    const res = await api<Purchase>('POST', '/purchases', purchase);
-    notifyDbChange();
-    return res;
-  }
   const dbData = {
     product_id: purchase.productId,
     product_name: purchase.productName,
@@ -681,11 +561,6 @@ export const recordPurchase = async (purchase: Omit<Purchase, 'id' | 'timestamp'
 };
 
 export const recordPurchaseInvoice = async (invoice: PurchaseInvoiceInput): Promise<string[]> => {
-  if (!isSupabaseConfigured()) {
-    const { ids } = await api<{ ids: string[] }>('POST', '/purchases/invoice', invoice);
-    notifyDbChange();
-    return ids;
-  }
   const savedIds: string[] = [];
   const invoiceNumber = invoice.invoiceNumber || `INV-${Date.now()}`;
 
@@ -728,11 +603,6 @@ export const recordPurchaseInvoice = async (invoice: PurchaseInvoiceInput): Prom
 };
 
 export const updatePurchase = async (oldPurchase: Purchase, newData: Omit<Purchase, 'id' | 'timestamp'>) => {
-  if (!isSupabaseConfigured()) {
-    await api('PUT', `/purchases/${oldPurchase.id}`, newData);
-    notifyDbChange();
-    return;
-  }
   await updateStock(oldPurchase.productId, oldPurchase.locationId, -oldPurchase.quantity, 'outgoing', `Purchase Updated (Reversing Old): ${oldPurchase.id}`);
 
   const { error } = await supabase.from('purchases').update({
@@ -755,11 +625,6 @@ export const updatePurchase = async (oldPurchase: Purchase, newData: Omit<Purcha
 };
 
 export const deletePurchase = async (purchase: Purchase) => {
-  if (!isSupabaseConfigured()) {
-    await api('DELETE', `/purchases/${purchase.id}`);
-    notifyDbChange();
-    return;
-  }
   const { error } = await supabase.from('purchases').delete().eq('id', purchase.id);
   if (error) throw new Error(error.message);
   await updateStock(purchase.productId, purchase.locationId, -purchase.quantity, 'outgoing', `Purchase Cancelled/Deleted: ${purchase.id}`);
@@ -768,9 +633,11 @@ export const deletePurchase = async (purchase: Purchase) => {
 
 // ─── ORDERS ─────────────────────────────────────────────────────────────────
 export const getOrders = async (): Promise<Order[]> => {
-  if (!isSupabaseConfigured()) return api<Order[]>('GET', '/orders');
   const { data, error } = await supabase.from('orders').select('*').order('order_date', { ascending: false });
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Error fetching orders from Supabase:', error.message);
+    return [];
+  }
   return (data || []).map(r => ({
     id: r.id,
     customerName: r.customer_name,
@@ -785,11 +652,6 @@ export const getOrders = async (): Promise<Order[]> => {
 };
 
 export const addOrder = async (order: Omit<Order, 'id'>) => {
-  if (!isSupabaseConfigured()) {
-    const res = await api<Order>('POST', '/orders', order);
-    notifyDbChange();
-    return res;
-  }
   const dbData = {
     customer_name: order.customerName,
     address: order.address,
@@ -816,11 +678,6 @@ export const addOrder = async (order: Omit<Order, 'id'>) => {
 };
 
 export const updateOrder = async (id: string, order: Partial<Order>) => {
-  if (!isSupabaseConfigured()) {
-    await api('PUT', `/orders/${id}`, order);
-    notifyDbChange();
-    return;
-  }
   const dbData: any = {};
   if (order.customerName) dbData.customer_name = order.customerName;
   if (order.address) dbData.address = order.address;
@@ -836,11 +693,6 @@ export const updateOrder = async (id: string, order: Partial<Order>) => {
 };
 
 export const deleteOrder = async (id: string) => {
-  if (!isSupabaseConfigured()) {
-    await api('DELETE', `/orders/${id}`);
-    notifyDbChange();
-    return;
-  }
   const { error } = await supabase.from('orders').delete().eq('id', id);
   if (error) throw new Error(error.message);
   notifyDbChange();
@@ -848,9 +700,11 @@ export const deleteOrder = async (id: string) => {
 
 // ─── EXPENSES ───────────────────────────────────────────────────────────────
 export const getExpenses = async (): Promise<Expense[]> => {
-  if (!isSupabaseConfigured()) return api<Expense[]>('GET', '/expenses');
   const { data, error } = await supabase.from('expenses').select('*').order('date', { ascending: false });
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('Error fetching expenses from Supabase:', error.message);
+    return [];
+  }
   return (data || []).map(r => ({
     id: r.id,
     description: r.description,
@@ -863,11 +717,6 @@ export const getExpenses = async (): Promise<Expense[]> => {
 };
 
 export const addExpense = async (expense: Omit<Expense, 'id' | 'timestamp'>) => {
-  if (!isSupabaseConfigured()) {
-    await api('POST', '/expenses', expense);
-    notifyDbChange();
-    return;
-  }
   const dbData = {
     description: expense.description,
     amount: expense.amount,
@@ -881,11 +730,6 @@ export const addExpense = async (expense: Omit<Expense, 'id' | 'timestamp'>) => 
 };
 
 export const updateExpense = async (id: string, expense: Partial<Expense>) => {
-  if (!isSupabaseConfigured()) {
-    await api('PUT', `/expenses/${id}`, expense);
-    notifyDbChange();
-    return;
-  }
   const dbData: any = {};
   if (expense.description) dbData.description = expense.description;
   if (expense.amount !== undefined) dbData.amount = expense.amount;
@@ -898,11 +742,6 @@ export const updateExpense = async (id: string, expense: Partial<Expense>) => {
 };
 
 export const deleteExpense = async (id: string) => {
-  if (!isSupabaseConfigured()) {
-    await api('DELETE', `/expenses/${id}`);
-    notifyDbChange();
-    return;
-  }
   const { error } = await supabase.from('expenses').delete().eq('id', id);
   if (error) throw new Error(error.message);
   notifyDbChange();
@@ -910,14 +749,6 @@ export const deleteExpense = async (id: string) => {
 
 // ─── NOTIFICATIONS ──────────────────────────────────────────────────────────
 export const getNotifications = (userId: string, callback: (notifications: Notification[]) => void) => {
-  if (!isSupabaseConfigured()) {
-    let cancelled = false;
-    api<Notification[]>('GET', '/notifications')
-      .then((n) => { if (!cancelled) callback(n); })
-      .catch(() => { if (!cancelled) callback([]); });
-    return () => { cancelled = true; };
-  }
-
   let isMounted = true;
   supabase
     .from('notifications')
@@ -962,11 +793,6 @@ export const getNotifications = (userId: string, callback: (notifications: Notif
 };
 
 export const createNotification = async (notification: Omit<Notification, 'id' | 'timestamp'>) => {
-  if (!isSupabaseConfigured()) {
-    await api('POST', '/notifications', notification);
-    notifyDbChange();
-    return;
-  }
   await supabase.from('notifications').insert({
     user_id: notification.userId,
     message: notification.message,
@@ -977,22 +803,12 @@ export const createNotification = async (notification: Omit<Notification, 'id' |
 };
 
 export const markNotificationRead = async (notificationId: string) => {
-  if (!isSupabaseConfigured()) {
-    await api('PUT', `/notifications/${notificationId}/read`);
-    notifyDbChange();
-    return;
-  }
   await supabase.from('notifications').update({ read: true }).eq('id', notificationId);
   notifyDbChange();
 };
 
 // ─── ADMIN: RESET & SEED ─────────────────────────────────────────────────────
 export const clearAllData = async () => {
-  if (!isSupabaseConfigured()) {
-    await api('POST', '/admin/reset');
-    notifyDbChange();
-    return;
-  }
   const tables = [
     'notifications',
     'stock_movements',
@@ -1013,11 +829,6 @@ export const clearAllData = async () => {
 };
 
 export const seedRealData = async () => {
-  if (!isSupabaseConfigured()) {
-    await api('POST', '/admin/seed');
-    notifyDbChange();
-    return;
-  }
   const { data: prods } = await supabase.from('products').select('id').limit(1);
   if (prods && prods.length > 0) return;
 
