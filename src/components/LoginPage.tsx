@@ -1,8 +1,9 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';
-import { LayoutGrid, LogIn, ShieldCheck, Users, Box, ArrowRight, Sparkles } from 'lucide-react';
+import { LayoutGrid, LogIn, ShieldCheck, Users, Box, ArrowRight, Sparkles, Database } from 'lucide-react';
 import { UserRole } from '../types';
+import { isSupabaseConfigured } from '../lib/supabase';
 
 export default function LoginPage() {
   const { loginWithCredentials } = useAuth();
@@ -46,6 +47,10 @@ export default function LoginPage() {
 
         <div className="bg-white/85 backdrop-blur-2xl rounded-[32px] p-6 sm:p-8 shadow-2xl shadow-black/20 border border-white/60">
           <div className="text-center mb-6">
+            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold mb-3 bg-slate-100 text-slate-700">
+              <Database size={13} className={isSupabaseConfigured() ? "text-emerald-500" : "text-indigo-500"} />
+              <span>Database: <b>{isSupabaseConfigured() ? "Supabase (Cloud)" : "Local Database (SQLite)"}</b></span>
+            </div>
             <h2 className="text-xl font-bold text-slate-900">Welcome to the System</h2>
             <p className="text-xs text-slate-500 mt-1 font-medium">
               Please enter your credentials to login:

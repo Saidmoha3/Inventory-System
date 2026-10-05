@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { api, getToken, setToken } from '../lib/api';
 import { UserProfile, UserRole } from '../types';
 
 export interface AppUser {
@@ -37,59 +38,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(p);
     setUser(p ? toAppUser(p) : null);
     if (p) {
-      localStorage.setItem('inventory_pro_supabase_user', JSON.stringify(p));
+      localStorage.setItem('inventory_pro_user_session', JSON.stringify(p));
     } else {
-      localStorage.removeItem('inventory_pro_supabase_user');
+      localStorage.removeItem('inventory_pro_user_session');
     }
   };
 
   const loginWithCredentials = async (username: string, pass: string) => {
     const ident = username.trim().toLowerCase();
 
-    // Query Supabase users table
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .or(`username.ilike.${ident},email.ilike.${ident}`)
-      .eq('password', pass)
-      .single();
+    // 1. If Supabase is configured with real credentials, authenticate via Supabase
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .or(`username.ilike.${ident},email.ilike.${ident}`)
+          .eq('password', pass)
+          .single();
 
-    if (error || !data) {
-      // Fallback for default local admin if project is freshly initialized
-      if (ident === 'admin' && pass === 'admin123') {
-        const fallbackAdmin: UserProfile = {
-          id: 'admin_initial_id',
-          email: 'admin@garowesupermarket.com',
-          name: 'Maamulaha Guud',
-          role: 'Admin',
-          locationIds: [],
-          createdAt: new Date().toISOString()
-        };
-        applyProfile(fallbackAdmin);
-        return;
-      }
-      throw new Error('Username ama password waa khalad (Invalid credentials)');
-    }
+        if (error || !data) {
+          throw new Error('Username ama password waa khalad (Invalid credentials)');
+        }
 
-    const userProfile: UserProfile = {
-      id: data.id,
-      email: data.email,
-      name: data.name,
-      role: data.role as UserRole,
-      address: data.address,
-      locationIds: data.location_ids || [],
-      createdAt: data.created_at
-    };
-
-    applyProfile(userProfile);
-  };
-
-  const refreshProfile = async () => {
-    if (!profile) return;
-    try {
-      const { data } = await supabase.from('users').select('*').eq('id', profile.id).single();
-      if (data) {
-        applyProfile({
+        const userProfile: UserProfile = {
           id: data.id,
           email: data.email,
           name: data.name,
@@ -97,7 +69,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           address: data.address,
           locationIds: data.location_ids || [],
           createdAt: data.created_at
-        });
+        };
+
+        applyProfile(userProfile);
+        return;
+      } catch (err: any) {
+        if (
+          err?.name === 'TypeError' || 
+          err?.message?.includes('Failed to fetch') || 
+          err?.message?.includes('NetworkError')
+        ) {
+          throw new Error(
+            'Cilad: Supabase lama xiriiri karo (Failed to fetch). Fadlan hubi in VITE_SUPABASE_URL uu sax yahay, internet-kuna shaqeynayo.'
+          );
+        }
+        throw err;
+      }
+    }
+
+    // 2. Otherwise, authenticate seamlessly via the local SQLite backend API
+    const res = await api<{ token: string; user: UserProfile }>('POST', '/auth/login', {
+      username: username.trim(),
+      password: pass
+    });
+    setToken(res.token);
+    applyProfile(res.user);
+  };
+
+  const refreshProfile = async () => {
+    if (!profile) return;
+    try {
+      if (isSupabaseConfigured()) {
+        const { data } = await supabase.from('users').select('*').eq('id', profile.id).single();
+        if (data) {
+          applyProfile({
+            id: data.id,
+            email: data.email,
+            name: data.name,
+            role: data.role as UserRole,
+            address: data.address,
+            locationIds: data.location_ids || [],
+            createdAt: data.created_at
+          });
+        }
+      } else {
+        const p = await api<UserProfile>('GET', '/auth/me');
+        if (p) applyProfile(p);
       }
     } catch (e) {
       console.error('Error refreshing profile:', e);
@@ -105,12 +122,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = async () => {
+    if (!isSupabaseConfigured() && getToken()) {
+      try {
+        await api('POST', '/auth/logout');
+      } catch {
+        /* ignore */
+      }
+      setToken(null);
+    }
     applyProfile(null);
   };
 
   useEffect(() => {
-    // Check saved session
-    const saved = localStorage.getItem('inventory_pro_supabase_user');
+    const onExpired = () => applyProfile(null);
+    window.addEventListener('auth-expired', onExpired);
+
+    const saved = localStorage.getItem('inventory_pro_user_session');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -120,7 +147,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Session parse error:', e);
       }
     }
-    setLoading(false);
+
+    // If local backend mode and we have a token, verify with server
+    if (!isSupabaseConfigured() && getToken()) {
+      api<UserProfile>('GET', '/auth/me')
+        .then(applyProfile)
+        .catch(() => applyProfile(null))
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
+
+    return () => window.removeEventListener('auth-expired', onExpired);
   }, []);
 
   const isAdmin = profile?.role === 'Admin';
