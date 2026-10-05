@@ -46,6 +46,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginWithCredentials = async (username: string, pass: string) => {
     const ident = username.trim().toLowerCase();
 
+    if (!ident || !pass) {
+      throw new Error('Please enter both username and password.');
+    }
+
     try {
       const { data, error } = await supabase
         .from('users')
@@ -59,9 +63,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           error?.message?.includes('Failed to fetch') || 
           error?.message?.includes('fetch')
         ) {
-          throw new Error('Supabase lama xiriiri karo (Failed to fetch). Fadlan hubi VITE_SUPABASE_URL iyo VITE_SUPABASE_ANON_KEY faylka .env ku jira.');
+          throw new Error('Unable to connect to the server. Please check your connection.');
         }
-        throw new Error('Username ama password waa khalad (Invalid credentials)');
+        throw new Error('Invalid username or password. Please try again.');
       }
 
       const userProfile: UserProfile = {
@@ -81,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         err?.message?.includes('Failed to fetch') ||
         err?.message?.includes('NetworkError')
       ) {
-        throw new Error('Supabase lama xiriiri karo (Failed to fetch). Fadlan hubi VITE_SUPABASE_URL iyo VITE_SUPABASE_ANON_KEY faylka .env ku jira.');
+        throw new Error('Unable to connect to the server. Please check your connection.');
       }
       throw err;
     }
